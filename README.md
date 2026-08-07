@@ -11,6 +11,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `search_leads` | Search leads by name, phone, or email. |
 | `add_lead` | Create a new person/lead. |
 | `add_note` | Attach a note to an existing person. |
+| `find_engaged_leads` | Rank recently-active leads by website-browsing signals (properties viewed/saved) and responsiveness signals (texts/calls back, contacted) so you can prioritize who to reach out to for an appointment. |
 
 ## How auth works
 
@@ -97,4 +98,5 @@ src/
                   - `add_lead` creates a person record directly via `POST /v1/people`. Follow Up Boss's own docs note this will not trigger lead-routing automations or action plans - those only fire from event notifications (`POST /v1/events`) coming from a registered lead source. If you need automations to run, that's a separate integration path; this tool is for straightforward manual contact creation.
                   - Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. This server doesn't currently implement retry/backoff - add it if you expect heavy tool usage.
                   - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
+                  - `find_engaged_leads` relies on Follow Up Boss's `propertiesViewed`/`propertiesSaved` counters, which only populate if your website/IDX provider is sending property-view activity into FUB via `POST /v1/events` (event types like `Viewed Property`, `Saved Property`, `Property Search`). If your site isn't wired up to send those events, this tool will only ever see the responsiveness signals (texts/calls/contacted), not the browsing ones - check with your IDX provider or FUB support if scores look browsing-blind.
                   

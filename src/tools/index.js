@@ -225,5 +225,106 @@ function textResult(value) {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  // find_engaged_leads - rank recently-active leads by browsing + response signals
+  server.registerTool(
+    "find_engaged_leads",
+    {
+      title: "Find Engaged Leads",
+      description:
+        "Find leads showing real buying/selling intent right now: people who have been " +
+        "browsing listings on your brokerage website (viewed/saved properties) and/or " +
+        "responding to your outreach (texting back, calling in, marked contacted). Pulls " +
+        "recently-active people from Follow Up Boss, scores each on a browsing signal and a " +
+        "responsiveness signal, and returns the top-ranked leads so you can prioritize who to " +
+        "call or text for an appointment right now.",
+      inputSchema: {
+        withinDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(90)
+          .optional()
+          .default(14)
+          .describe("Only consider leads with activity in the last N days. Defaults to 14."),
+        tags: z
+          .string()
+          .optional()
+          .describe("Optional comma-separated tags to narrow the pool first, e.g. 'Buyer' or 'Seller'."),
+        scanLimit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .default(100)
+          .describe("How many recently-active leads to pull from Follow Up Boss before ranking (max 100)."),
+        topN: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .default(10)
+          .describe("How many top-ranked leads to return. Defaults to 10."),
+      },
+    },
+    async ({ withinDays, tags, scanLimit, topN }) => {
+      try {
+        const lastActivityAfter = new Date(Date.now() - withinDays * 24 * 60 * 60 * 1000).toISOString();
+
+        const data = await fub.get("/people", {
+          lastActivityAfter,
+          tags,
+          sort: "-lastActivity",
+          limit: scanLimit,
+          offset: 0,
+          fields:
+            "id,firstName,lastName,stage,source,tags,emails,phones,lastActivity,lastCommunication," +
+            "contacted,propertiesViewed,propertiesSaved,textsReceived,textsSent,callsIncoming,callsOutgoing",
+        });
+
+        const people = data?.people ?? [];
+
+        const ranked = people
+          .map((p) => {
+            const propertiesViewed = p.propertiesViewed || 0;
+            const propertiesSaved = p.propertiesSaved || 0;
+            const textsReceived = p.textsReceived || 0;
+            const callsIncoming = p.callsIncoming || 0;
+
+            // Browsing signal: actively looking at listings on the website.
+            const browsingScore = propertiesViewed * 2 + propertiesSaved * 3;
+            // Responsiveness signal: texting/calling back, or already marked contacted.
+            const responseScore = textsReceived * 2 + callsIncoming * 2 + (p.contacted ? 3 : 0);
+
+            return {
+              id: p.id,
+              name: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+              stage: p.stage,
+              tags: p.tags,
+              emails: p.emails,
+              phones: p.phones,
+              lastActivity: p.lastActivity,
+              lastCommunication: p.lastCommunication,
+              signals: { propertiesViewed, propertiesSaved, textsReceived, callsIncoming, contacted: !!p.contacted },
+              browsingScore,
+              responseScore,
+              engagementScore: browsingScore + responseScore,
+            };
+          })
+          .filter((p) => p.browsingScore > 0 || p.responseScore > 0)
+          .sort((a, b) => b.engagementScore - a.engagementScore)
+          .slice(0, topN);
+
+        return textResult({
+          criteria: { withinDays, tags: tags || "all", scannedCount: people.length },
+          leads: ranked,
+        });
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+}
