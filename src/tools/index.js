@@ -392,6 +392,155 @@ export function registerFubTools(server) {
     }
   );
 
+  // add_task - create a follow-up reminder tied to a person
+  server.registerTool(
+    "add_task",
+    {
+      title: "Add Task",
+      description:
+        "Create a follow-up task/reminder in Follow Up Boss, tied to a person. Use this so " +
+        "follow-ups surface in FUB's own task list instead of only living in a chat response.",
+      inputSchema: {
+        personId: z.number().int().describe("The Follow Up Boss person id this task relates to."),
+        name: z.string().describe("Short task title, e.g. 'Call new lead within 5 minutes'."),
+        type: z
+          .enum(["Follow Up", "Call", "Text", "Email", "Appointment", "Showing", "Closing", "Open House", "Thank You"])
+          .optional()
+          .describe("Task type."),
+        dueDateTime: z
+          .string()
+          .optional()
+          .describe("Due date/time with timezone offset, e.g. '2026-08-10T09:00:00-05:00'. Omit for no due time."),
+        remindSecondsBefore: z
+          .number()
+          .int()
+          .optional()
+          .describe("Seconds before dueDateTime to remind. Requires dueDateTime."),
+        assignedTo: z.string().optional().describe("Full name of the agent to assign this task to."),
+      },
+    },
+    async ({ personId, name, type, dueDateTime, remindSecondsBefore, assignedTo }) => {
+      try {
+        const data = await fub.post("/tasks", {
+          personId,
+          ...(name && { name }),
+          ...(type && { type }),
+          ...(dueDateTime && { dueDateTime }),
+          ...(remindSecondsBefore !== undefined && { remindSecondsBefore }),
+          ...(assignedTo && { assignedTo }),
+        });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // list_tasks - browse due/overdue/upcoming follow-ups
+  server.registerTool(
+    "list_tasks",
+    {
+      title: "List Tasks",
+      description:
+        "List Follow Up Boss tasks - use `due` to pull what's due today, overdue, or upcoming " +
+        "across the whole pipeline, or `personId` to scope to one lead.",
+      inputSchema: {
+        personId: z.number().int().optional().describe("Scope to a single person's tasks."),
+        isCompleted: z.boolean().optional().describe("Filter by completion status."),
+        due: z.enum(["today", "overdue", "upcoming"]).optional().describe("Filter by due-date bucket."),
+        type: z
+          .enum(["Follow Up", "Call", "Text", "Email", "Appointment", "Showing", "Closing", "Open House", "Thank You"])
+          .optional(),
+        limit: z.number().int().min(1).max(100).optional().default(20),
+      },
+    },
+    async ({ personId, isCompleted, due, type, limit }) => {
+      try {
+        const data = await fub.get("/tasks", { personId, isCompleted, due, type, limit });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // complete_task - mark a task done
+  server.registerTool(
+    "complete_task",
+    {
+      title: "Complete Task",
+      description: "Mark a Follow Up Boss task as completed (or reopen it).",
+      inputSchema: {
+        taskId: z.number().int().describe("The Follow Up Boss task id."),
+        isCompleted: z.boolean().optional().default(true),
+      },
+    },
+    async ({ taskId, isCompleted }) => {
+      try {
+        const data = await fub.put(`/tasks/${taskId}`, { isCompleted });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // list_calls - browse logged calls, optionally across the whole pipeline (no personId)
+  server.registerTool(
+    "list_calls",
+    {
+      title: "List Calls",
+      description:
+        "List logged calls from Follow Up Boss. Omit personId to look across the whole " +
+        "pipeline (e.g. to find recent unanswered calls) instead of one lead at a time.",
+      inputSchema: {
+        personId: z.number().int().optional().describe("Scope to a single person's calls."),
+        phone: z.string().optional().describe("Filter by phone number (incoming or outgoing)."),
+        limit: z.number().int().min(1).max(100).optional().default(20),
+        offset: z.number().int().min(0).optional().default(0),
+      },
+    },
+    async ({ personId, phone, limit, offset }) => {
+      try {
+        const data = await fub.get("/calls", { personId, phone, limit, offset });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // register_fub_webhook - wire up FUB to POST events at this server (for speed-to-lead)
+  server.registerTool(
+    "register_fub_webhook",
+    {
+      title: "Register FUB Webhook",
+      description:
+        "Register a webhook with Follow Up Boss so it POSTs events (e.g. new leads) to this " +
+        "server's /webhooks/fub endpoint. Needed once, after this server is deployed at a " +
+        "public HTTPS URL, to power the speed-to-lead auto-response flow. See " +
+        "skills/speed-to-lead/SKILL.md.",
+      inputSchema: {
+        callbackUrl: z
+          .string()
+          .describe("This server's public webhook URL, e.g. 'https://your-app.up.railway.app/webhooks/fub'."),
+        event: z
+          .string()
+          .optional()
+          .default("peopleCreated")
+          .describe("FUB event type to subscribe to. Defaults to 'peopleCreated' (new leads)."),
+      },
+    },
+    async ({ callbackUrl, event }) => {
+      try {
+        const data = await fub.post("/webhooks", { event, url: callbackUrl });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
   // notify_slack - post a draft (email, social post, report) to a channel for human review
   server.registerTool(
     "notify_slack",
