@@ -2,6 +2,7 @@ import { z } from "zod";
 import { fub } from "../fubClient.js";
 import { sendSms, fromNumber as twilioFromNumber } from "../twilioClient.js";
 import { realGeeks } from "../realGeeksClient.js";
+import { postToSlack } from "../slackClient.js";
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -385,6 +386,34 @@ export function registerFubTools(server) {
 
         const data = await realGeeks.createLead(lead);
         return textResult({ synced: lead, realGeeksResponse: data });
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // notify_slack - post a draft (email, social post, report) to a channel for human review
+  server.registerTool(
+    "notify_slack",
+    {
+      title: "Notify Slack",
+      description:
+        "Post a message - a drafted email, a batch of social posts, an agent report, a " +
+        "follow-up list - to a configured Slack channel so a human can review it before " +
+        "anything goes out. Requires SLACK_WEBHOOKS to be configured with a JSON map of " +
+        "channel label to Slack Incoming Webhook URL. See skills/slack-review-queue for how " +
+        "to set up channels like 'marketing-review' or 'cmo'.",
+      inputSchema: {
+        channel: z
+          .string()
+          .describe("Label of the configured Slack channel to post to, e.g. 'marketing-review'."),
+        text: z.string().describe("The message to post. Plain text or Slack mrkdwn."),
+      },
+    },
+    async ({ channel, text }) => {
+      try {
+        const data = await postToSlack({ channel, text });
+        return textResult(data);
       } catch (err) {
         return errorResult(err);
       }

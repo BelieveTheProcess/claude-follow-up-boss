@@ -1,6 +1,6 @@
 # Follow Up Boss MCP Server
 
-A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` and Streamable HTTP transport, that wraps the Follow Up Boss API (plus Twilio and Real Geeks) so any MCP-compatible AI client (Claude, etc.) can read and manage your leads.
+A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` and Streamable HTTP transport, that wraps the Follow Up Boss API (plus Twilio, Real Geeks, and Slack) so any MCP-compatible AI client (Claude, etc.) can read and manage your leads.
 
 ## Tools
 
@@ -15,6 +15,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `list_action_plans` | List the follow-up sequences ("Action Plans") configured in FUB. |
 | `apply_action_plan` | Enroll a lead in an existing Action Plan by id. |
 | `sync_lead_to_realgeeks` | Push a FUB lead into a Real Geeks site so a search alert / IDX drip can be set up. |
+| `notify_slack` | Post a drafted message (email, social batch, report) to a configured Slack channel for review. |
 
 ## How auth works
 
@@ -26,6 +27,8 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 **Twilio** - `send_text` authenticates with `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` and sends from `TWILIO_FROM_NUMBER`.
 
 **Real Geeks** - `sync_lead_to_realgeeks` uses HTTP Basic Auth with partner credentials (`REALGEEKS_USERNAME` / `REALGEEKS_PASSWORD`) issued by Real Geeks, scoped to a specific site via `REALGEEKS_SITE_UUID`. These are not self-service like a FUB API key - see "Real Geeks setup" below.
+
+**Slack** - `notify_slack` posts to one of your Slack channels via an Incoming Webhook URL. `SLACK_WEBHOOKS` is a JSON object mapping a channel label you choose (e.g. `"marketing-review"`) to that channel's webhook URL - see `skills/slack-review-queue/SKILL.md` for setup.
 
 All secrets are read from environment variables at request time. They are never hardcoded or logged, and `.env` is git-ignored - only `.env.example` (with blank values) is committed.
 
@@ -39,10 +42,12 @@ src/
   fubClient.js         Thin fetch wrapper: adds FUB Basic Auth + X-System headers
   twilioClient.js       Thin wrapper around the Twilio SDK for sending SMS
   realGeeksClient.js     Thin fetch wrapper: adds Real Geeks Basic Auth
-  tools/index.js          The MCP tool definitions, calling the clients above
+  slackClient.js          Thin wrapper around Slack Incoming Webhooks
+  tools/index.js            The MCP tool definitions, calling the clients above
 .env.example
 package.json
-skills/                 Claude Skill definitions for the four CRM workflows this repo enables
+BRAND.md               Fillable brand/voice doc the content skills read before drafting
+skills/                 Claude Skill definitions for the CRM + content workflows this repo enables
 ```
 
 ## Local setup
@@ -75,9 +80,13 @@ TWILIO_FROM_NUMBER=
 REALGEEKS_USERNAME=
 REALGEEKS_PASSWORD=
 REALGEEKS_SITE_UUID=
+
+SLACK_WEBHOOKS=
 ```
 
-Twilio and Real Geeks variables are only required if you use `send_text` or `sync_lead_to_realgeeks` - the FUB tools work fine without them.
+Twilio, Real Geeks, and Slack variables are only required if you use `send_text`, `sync_lead_to_realgeeks`, or `notify_slack` respectively - the FUB tools work fine without them.
+
+Also fill in `BRAND.md` at the repo root with your voice/tone/farm-area details - the content-generating skills (listing descriptions, market updates, social posts, open house follow-up) read it before drafting anything.
 
 5. Run it:
 
@@ -104,6 +113,10 @@ Unlike the FUB API key, Real Geeks credentials aren't self-service:
 
 Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a clear "missing environment variable" error rather than a confusing API error.
 
+## Slack setup
+
+`notify_slack` posts through Slack Incoming Webhooks, not a full Slack app - see `skills/slack-review-queue/SKILL.md` for step-by-step setup and for what this integration deliberately does not do (no reading replies, no bot mentions, no automated metrics gathering).
+
 ## Deploying to Railway
 
 1. Push this project to a GitHub repo (make sure `.env` is not committed - `.gitignore` already excludes it).
@@ -114,6 +127,7 @@ Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a cl
    - `MCP_AUTH_TOKENS` (recommended once public - a long random token)
    - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (for `send_text`)
    - `REALGEEKS_USERNAME`, `REALGEEKS_PASSWORD`, `REALGEEKS_SITE_UUID` (for `sync_lead_to_realgeeks`)
+   - `SLACK_WEBHOOKS` (for `notify_slack`)
 5. Do not set `PORT` - Railway injects it automatically and `src/index.js` already reads `process.env.PORT`.
 6. Deploy. Railway will give you a public URL like `https://your-app.up.railway.app`. Your MCP endpoint is:
 
@@ -128,13 +142,27 @@ https://your-app.up.railway.app/mcp
 - `add_lead` creates a person record directly via `POST /v1/people`. Follow Up Boss's own docs note this will not trigger lead-routing automations or action plans - those only fire from event notifications (`POST /v1/events`) coming from a registered lead source. If you need automations to run, that's a separate integration path; this tool is for straightforward manual contact creation. Use `apply_action_plan` afterwards if you want the new lead enrolled in a sequence.
 - FUB's `/textMessages` endpoint only records a log entry - it cannot deliver anything. `send_text` sends the real message through Twilio first, then logs it so it still shows up correctly on the FUB timeline.
 - The FUB API can list Action Plans and enroll/pause people on them, but it cannot create or edit a plan's steps/content - new or edited sequences (subject lines, email bodies, wait times) still have to be built in the FUB UI under Automations. See `skills/fub-sequence-writer/SKILL.md` for how this repo works around that.
+- There is no email-sending tool in this repo. `weekly-market-update` and similar skills produce drafts (optionally routed through `notify_slack` for review) that you still send through your own email tool/ESP.
+- `skills/youtube-clip-agent/SKILL.md` is a setup/design guide, not a working integration - it depends on Higsfield and YouTube Analytics API credentials that aren't configured here. Read it before assuming clipping is automated.
 - Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. This server doesn't currently implement retry/backoff - add it if you expect heavy tool usage.
 - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
 
 ## Skills
 
-`skills/` contains Claude Skill definitions (`SKILL.md`) for the four workflows this MCP server is meant to power - point Claude at this repo (or drop the skill folders into your skills directory) to use them:
+`skills/` contains Claude Skill definitions (`SKILL.md`) for the workflows this MCP server is meant to power - point Claude at this repo (or drop the skill folders into your skills directory) to use them. Content-generating skills read `BRAND.md` first for voice/tone.
 
+**CRM workflows:**
 - `fub-lead-scoring` - daily Hot/Warm/Cool follow-up list, scored on motivation, timeframe, financing, and recent engagement.
 - `fub-lead-capture` - turn a screenshot of a text/email thread, or a quick spoken note, into a new lead + note.
 - `fub-sequence-writer` - draft personalized follow-up sequences (referencing your own video/content library) for FUB Action Plans.
+- `openhouse-followup` - turn a sign-in sheet into logged leads plus same-day follow-up drafts.
+
+**Content workflows:**
+- `listing-description-writer` - MLS/social listing copy from property facts and photos.
+- `weekly-market-update` - a general market update plus localized versions per farm area.
+- `consultation-prep-sheet` - a one-page prep sheet from a lead's FUB history before a listing/buyer appointment.
+- `social-media-content-batch` - five related social posts from one topic/theme.
+
+**Operations:**
+- `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
+- `youtube-clip-agent` - a setup/design guide for a video-repurposing pipeline; **not wired up** (see Notes & gotchas).
