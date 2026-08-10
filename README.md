@@ -135,6 +135,6 @@ https://your-app.up.railway.app/mcp
 
 `skills/` contains Claude Skill definitions (`SKILL.md`) for the four workflows this MCP server is meant to power - point Claude at this repo (or drop the skill folders into your skills directory) to use them:
 
-- `fub-lead-scoring` - daily Hot/Warm/Cool follow-up list, scored against a Keller Williams-style lead matrix.
+- `fub-lead-scoring` - daily Hot/Warm/Cool follow-up list, scored on motivation, timeframe, financing, and recent engagement.
 - `fub-lead-capture` - turn a screenshot of a text/email thread, or a quick spoken note, into a new lead + note.
 - `fub-sequence-writer` - draft personalized follow-up sequences (referencing your own video/content library) for FUB Action Plans.

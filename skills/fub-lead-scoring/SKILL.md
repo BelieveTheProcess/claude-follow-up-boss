@@ -1,11 +1,11 @@
 ---
 name: fub-lead-scoring
-description: Score every lead in Follow Up Boss as Hot, Warm, or Cool using a Keller Williams-style lead matrix, then produce a daily follow-up list. Use whenever the user asks who to follow up with today, for a daily/morning lead review, or to prioritize their FUB pipeline.
+description: Score every lead in Follow Up Boss as Hot, Warm, or Cool using a motivation/timeframe/financing/engagement lead matrix, then produce a daily follow-up list. Use whenever the user asks who to follow up with today, for a daily/morning lead review, or to prioritize their FUB pipeline.
 ---
 
 # Follow Up Boss Lead Scoring
 
-Turn raw Follow Up Boss activity into a short, prioritized "who do I contact today" list, the same way a Keller Williams-trained agent scores leads: by **motivation**, **timeframe**, **financing/ability**, and **recent engagement** - not just by how old the lead is.
+Turn raw Follow Up Boss activity into a short, prioritized "who do I contact today" list, by scoring each lead on **motivation**, **timeframe**, **financing/ability**, and **recent engagement** - not just by how old the lead is.
 
 ## Data to pull
 
