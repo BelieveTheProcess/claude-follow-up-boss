@@ -9,8 +9,9 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `list_leads` | List/filter leads by pipeline stage, sorted by updated date, with a limit. |
 | `get_lead` | Full detail for one person by id - profile, notes, calls, texts, emails. |
 | `search_leads` | Search leads by name, phone, or email. |
-| `add_lead` | Create a new person/lead. |
+| `add_lead` | Create a new person/lead. Does NOT trigger action plans/automations. |
 | `add_note` | Attach a note to an existing person. |
+| `create_lead_event` | Send a lead via `POST /v1/events`. This is what triggers FUB Action Plans/lead routing, as long as `source` matches a source mapped to an Action Plan under Admin > Lead Flow. |
 
 ## How auth works
 
