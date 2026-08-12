@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { fub } from "../fubClient.js";
+import { runSpeedToLeadAutomation } from "../automations/speedToLead.js";
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -291,6 +292,51 @@ export function registerFubTools(server) {
         };
         const data = await fub.post("/events", body);
         return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // run_speed_to_lead_automation - full first-response pipeline for a Speed to Lead lead
+  server.registerTool(
+    "run_speed_to_lead_automation",
+    {
+      title: "Run Speed to Lead Automation",
+      description:
+        "Runs the full Speed to Lead automation for one lead: fires a Follow Up Boss lead event " +
+        "with source='Speed to Lead' (so any Action Plan mapped to that source under Admin > Lead " +
+        "Flow auto-assigns/routes it), immediately texts the lead via Twilio if a phone number and " +
+        "Twilio credentials (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_FROM_NUMBER) are available, " +
+        "and logs a note on the person record summarizing what ran. Assign this to any new lead that " +
+        "should get the Speed to Lead treatment and let it run end to end.",
+      inputSchema: {
+        firstName: z.string().describe("Lead's first name."),
+        lastName: z.string().optional().describe("Lead's last name."),
+        email: z.string().email().optional().describe("Lead's email address."),
+        phone: z.string().optional().describe("Lead's phone number, needed to send the instant text."),
+        message: z
+          .string()
+          .optional()
+          .describe("Free-text context about the inquiry, e.g. what property/page/ad it came from."),
+        eventType: z
+          .enum(["Registration", "Seller Inquiry", "Property Inquiry", "General Inquiry", "Visited Open House"])
+          .optional()
+          .default("Registration")
+          .describe("FUB event type to fire - must match what the Speed to Lead Action Plan trigger expects."),
+      },
+    },
+    async ({ firstName, lastName, email, phone, message, eventType }) => {
+      try {
+        const result = await runSpeedToLeadAutomation({
+          firstName,
+          lastName,
+          email,
+          phone,
+          message,
+          eventType,
+        });
+        return textResult(result);
       } catch (err) {
         return errorResult(err);
       }
