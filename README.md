@@ -14,6 +14,8 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `update_lead` | Update an existing person's stage, tags, assignment, price, or background. |
 | `list_pipeline_stages` | List this account's actual pipeline stage names, to avoid silently mismatched stages. |
 | `list_custom_fields` | List this account's configured custom fields (label, API name, type). |
+| `get_priority_leads` | One-call pipeline scan with each lead's recent notes/calls/texts/emails attached, instead of list_leads + N×get_lead. |
+| `tag_lead_priority` | Set/clear a `Priority: Hot/Warm/Cool` tag on a person - persists a scoring pass back into FUB. |
 | `add_note` | Attach a note to an existing person. |
 | `send_text` | Actually send an SMS via Twilio, then log it on the person's FUB timeline. |
 | `list_action_plans` | List the follow-up sequences ("Action Plans") configured in FUB. |

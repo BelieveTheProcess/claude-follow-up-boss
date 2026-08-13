@@ -371,6 +371,167 @@ export function registerFubTools(server) {
     }
   );
 
+  // get_priority_leads - one-call aggregation instead of list_leads + N*get_lead
+  server.registerTool(
+    "get_priority_leads",
+    {
+      title: "Get Priority Leads",
+      description:
+        "Pull a batch of leads (most-recently-updated first) along with each person's recent " +
+        "notes, calls, texts, and emails, in a single call - instead of calling list_leads and " +
+        "then get_lead once per person. Returns a compact bundle pre-sorted by most recent " +
+        "activity across all of those sources. This tool does NOT itself judge motivation, " +
+        "timeframe, or assign a Hot/Warm/Cool tier - that reading-comprehension step belongs " +
+        "to the caller (see skills/fub-lead-scoring). Use tag_lead_priority afterwards to " +
+        "persist the resulting tier back onto each person in FUB.",
+      inputSchema: {
+        stage: z.string().optional().describe("Restrict to one pipeline stage. Omit to scan across stages."),
+        excludeStages: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Stage names to exclude, e.g. ['Closed', 'Trash', 'Not Interested'] - confirm exact names with list_pipeline_stages first."
+          ),
+        candidateLimit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .default(20)
+          .describe(
+            "How many most-recently-updated people to pull and enrich with activity (1-50). Higher = broader scan but more API calls and slower."
+          ),
+        activityLimitPerType: z
+          .number()
+          .int()
+          .min(1)
+          .max(10)
+          .optional()
+          .default(5)
+          .describe("Max recent notes/calls/texts/emails to include per person, most recent first."),
+      },
+    },
+    async ({ stage, excludeStages, candidateLimit, activityLimitPerType }) => {
+      try {
+        const listResp = await fub.get("/people", {
+          stage,
+          sort: "-updated",
+          limit: candidateLimit,
+          fields: "id,firstName,lastName,stage,source,tags,emails,phones,created,updated",
+        });
+
+        const excludeSet = new Set((excludeStages || []).map((s) => s.toLowerCase()));
+        const candidates = (listResp.people || []).filter(
+          (p) => !excludeSet.has((p.stage || "").toLowerCase())
+        );
+
+        const truncate = (text, max = 280) =>
+          typeof text === "string" && text.length > max ? text.slice(0, max) + "…" : text;
+
+        const enriched = await Promise.all(
+          candidates.map(async (person) => {
+            const [notes, calls, texts, emails] = await Promise.all([
+              fub
+                .get("/notes", { personId: person.id, limit: activityLimitPerType, sort: "-created" })
+                .catch(() => ({ notes: [] })),
+              fub
+                .get("/calls", { personId: person.id, limit: activityLimitPerType, sort: "-created" })
+                .catch(() => ({ calls: [] })),
+              fub
+                .get("/textMessages", { personId: person.id, limit: activityLimitPerType, sort: "-created" })
+                .catch(() => ({ textMessages: [] })),
+              fub
+                .get("/emails", { personId: person.id, limit: activityLimitPerType, sort: "-created" })
+                .catch(() => ({ emails: [] })),
+            ]);
+
+            const recentNotes = (notes.notes || []).map((n) => ({ created: n.created, body: truncate(n.body) }));
+            const recentCalls = (calls.calls || []).map((c) => ({
+              created: c.created,
+              isIncoming: c.isIncoming,
+              outcome: c.outcome,
+              duration: c.duration,
+            }));
+            const recentTexts = (texts.textMessages || []).map((t) => ({
+              created: t.created,
+              isIncoming: t.isIncoming,
+              message: truncate(t.message),
+            }));
+            const recentEmails = (emails.emails || []).map((e) => ({
+              created: e.created,
+              isIncoming: e.isIncoming,
+              subject: e.subject,
+            }));
+
+            const allTimestamps = [
+              person.updated,
+              ...recentNotes.map((n) => n.created),
+              ...recentCalls.map((c) => c.created),
+              ...recentTexts.map((t) => t.created),
+              ...recentEmails.map((e) => e.created),
+            ].filter(Boolean);
+            const lastActivityAt = allTimestamps.sort().at(-1) || person.updated;
+
+            return {
+              personId: person.id,
+              name: [person.firstName, person.lastName].filter(Boolean).join(" "),
+              stage: person.stage,
+              source: person.source,
+              tags: person.tags || [],
+              createdAt: person.created,
+              updatedAt: person.updated,
+              lastActivityAt,
+              recentNotes,
+              recentCalls,
+              recentTexts,
+              recentEmails,
+            };
+          })
+        );
+
+        enriched.sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : -1));
+
+        return textResult({ count: enriched.length, leads: enriched });
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // tag_lead_priority - persist a Hot/Warm/Cool call back onto the person record
+  server.registerTool(
+    "tag_lead_priority",
+    {
+      title: "Tag Lead Priority",
+      description:
+        "Set or clear a lead's priority tag in FUB - 'Priority: Hot', 'Priority: Warm', or " +
+        "'Priority: Cool' - replacing any existing priority tag on that person instead of " +
+        "stacking duplicates. Pairs with get_priority_leads: compute the ranking there, then " +
+        "persist it here so list_leads and FUB's own UI can filter by tag without recomputing " +
+        "the score every time. Pass tier 'None' to remove the priority tag without setting a " +
+        "new one (e.g. a lead that no longer qualifies).",
+      inputSchema: {
+        personId: z.number().int().describe("The Follow Up Boss person id."),
+        tier: z.enum(["Hot", "Warm", "Cool", "None"]).describe("Priority tier to set. 'None' clears any existing priority tag."),
+      },
+    },
+    async ({ personId, tier }) => {
+      try {
+        const person = await fub.get(`/people/${personId}`, { fields: "id,tags" });
+        const existingTags = person.tags || [];
+        const isPriorityTag = (t) => /^Priority: (Hot|Warm|Cool)$/i.test(t);
+        const keptTags = existingTags.filter((t) => !isPriorityTag(t));
+        const newTags = tier === "None" ? keptTags : [...keptTags, `Priority: ${tier}`];
+
+        const data = await fub.put(`/people/${personId}`, { tags: newTags }, { mergeTags: "false" });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
   // add_note - attach a note to a person
   server.registerTool(
     "add_note",
