@@ -69,11 +69,26 @@ async function handleMcpPost(req, res) {
     session = { server, transport };
     await server.connect(transport);
   } else if (!session) {
-    res.status(400).json({
-      jsonrpc: "2.0",
-      error: { code: -32000, message: "Bad Request: no valid session, and not an initialize request" },
-      id: null,
-    });
+    // A session id was presented but doesn't match anything we know about -
+    // most commonly because a restart (any redeploy) cleared the in-memory
+    // `sessions` map out from under a client that's still holding an older
+    // id. Per the MCP Streamable HTTP spec, respond 404 here (not a generic
+    // 400) so a compliant client recognizes "session gone" and starts a
+    // fresh `initialize` on its own, instead of retrying the same dead
+    // session id forever.
+    if (sessionId) {
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found - start a new session with an initialize request" },
+        id: null,
+      });
+    } else {
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Bad Request: no valid session, and not an initialize request" },
+        id: null,
+      });
+    }
     return;
   }
 
@@ -85,7 +100,9 @@ async function handleMcpSessionRequest(req, res) {
   const sessionId = req.headers["mcp-session-id"];
   const session = sessionId ? sessions.get(sessionId) : undefined;
   if (!session) {
-    res.status(400).send("Invalid or missing session ID");
+    // Same reasoning as handleMcpPost: an unrecognized session id gets 404
+    // so the client knows to reinitialize, rather than a generic 400.
+    res.status(sessionId ? 404 : 400).send("Invalid or missing session ID");
     return;
   }
   await session.transport.handleRequest(req, res);
