@@ -4,18 +4,23 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerFubTools } from "./tools/index.js";
-import { registerOAuthRoutes, isValidAccessToken } from "./oauth.js";
 import { registerFubWebhookRoute } from "./webhooks.js";
 
 const PORT = process.env.PORT || 3000;
 const AUTH_TOKENS = (process.env.MCP_AUTH_TOKENS || "").split(",").map((t) => t.trim()).filter(Boolean);
-const AUTH_REQUIRED = AUTH_TOKENS.length > 0 || Boolean(process.env.OAUTH_PASSWORD);
+const AUTH_REQUIRED = AUTH_TOKENS.length > 0;
 
+// Static bearer-token auth (MCP_AUTH_TOKENS), not OAuth. This server used to
+// implement a full dynamic-client-registration OAuth flow, but it kept every
+// registered client and issued token in an in-memory Map - a redeploy (any
+// process restart) silently wiped all of it and broke every connected
+// client until they went through the whole auth flow again. A static token
+// has no server-side state to lose, so it survives restarts/redeploys.
 function checkAuth(req, res) {
   if (!AUTH_REQUIRED) return true;
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (token && (AUTH_TOKENS.includes(token) || isValidAccessToken(token))) return true;
+  if (token && AUTH_TOKENS.includes(token)) return true;
   res.status(401).json({ jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" }, id: null });
   return false;
 }
@@ -34,7 +39,6 @@ registerFubWebhookRoute(app);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-registerOAuthRoutes(app);
 
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
 
