@@ -5,17 +5,20 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerFubTools } from "./tools/index.js";
 import { registerFubWebhookRoute } from "./webhooks.js";
+import { registerOAuthRoutes } from "./oauth.js";
 
 const PORT = process.env.PORT || 3000;
 const AUTH_TOKENS = (process.env.MCP_AUTH_TOKENS || "").split(",").map((t) => t.trim()).filter(Boolean);
 const AUTH_REQUIRED = AUTH_TOKENS.length > 0;
 
-// Static bearer-token auth (MCP_AUTH_TOKENS), not OAuth. This server used to
-// implement a full dynamic-client-registration OAuth flow, but it kept every
-// registered client and issued token in an in-memory Map - a redeploy (any
-// process restart) silently wiped all of it and broke every connected
-// client until they went through the whole auth flow again. A static token
-// has no server-side state to lose, so it survives restarts/redeploys.
+// Auth is fundamentally a static bearer token (MCP_AUTH_TOKENS) - see
+// oauth.js for why an OAuth *shell* still exists on top of it: Claude's
+// custom-connector UI requires a remote MCP server to complete an OAuth
+// handshake to connect at all, it has no plain "paste a token" field. That
+// flow's /token endpoint hands back this same static token rather than a
+// randomly generated one, so checking membership here is all that's needed
+// either way - direct bearer-token callers and OAuth-obtained ones both end
+// up presenting a value from this same list.
 function checkAuth(req, res) {
   if (!AUTH_REQUIRED) return true;
   const header = req.headers.authorization || "";
@@ -39,6 +42,7 @@ registerFubWebhookRoute(app);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+registerOAuthRoutes(app);
 
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
 

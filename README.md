@@ -43,7 +43,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 
 All secrets are read from environment variables at request time. They are never hardcoded or logged, and `.env` is git-ignored - only `.env.example` (with blank values) is committed.
 
-**Connecting client (Claude, etc.)** - this server requires a static bearer token via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens) for any deployment reachable over the internet; leave it blank only for local-only development. This used to be a full dynamic-client-registration OAuth flow, but that implementation kept every registered client and issued token in memory - a redeploy (any process restart) wiped it all and broke every connected client until they redid the entire auth flow. A static token has no server-side state to lose, so it survives restarts and redeploys. If you're migrating from the old OAuth setup: generate a token, set `MCP_AUTH_TOKENS`, then in Claude's connector settings remove and re-add this connector, supplying the token directly instead of going through a password/login page.
+**Connecting client (Claude, etc.)** - the real credential is a static bearer token via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens), required for any deployment reachable over the internet; leave it blank only for local-only development. On top of that, `src/oauth.js` implements an OAuth shell (dynamic client registration + PKCE via `/register`, `/authorize`, `/token`) purely because Claude's custom-connector UI requires a remote MCP server to complete an OAuth handshake to connect at all - it has no plain "paste a token" field. Client registrations and authorization codes from that flow are short-lived and kept in memory (fine, they're only used for a few minutes during the interactive login), but `/token` does **not** generate and store a fresh random access token - it hands back the server's own `MCP_AUTH_TOKENS` value directly. So the token obtained through the OAuth login is the same static secret either way, and stays valid across restarts/redeploys - unlike an earlier version of this file that generated and stored real tokens in memory and silently logged out every connected client on every redeploy. `OAUTH_PASSWORD` gates the login page itself (the human-interactive step); set it alongside `MCP_AUTH_TOKENS`.
 
 ## Project layout
 
@@ -147,6 +147,7 @@ No separate webhook secret is needed - signatures are verified using your existi
 4. In the Railway project's Variables tab, add whichever of these you need:
    - `FUB_API_KEY`, `FUB_SYSTEM`, `FUB_SYSTEM_KEY`
    - `MCP_AUTH_TOKENS` (required once public - a long random token; see "How auth works" above)
+   - `OAUTH_PASSWORD` (required if connecting via a client that needs the OAuth login page, e.g. Claude's connector UI)
    - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (for `send_text`)
    - `REALGEEKS_USERNAME`, `REALGEEKS_PASSWORD`, `REALGEEKS_SITE_UUID` (for `sync_lead_to_realgeeks`)
    - `SLACK_WEBHOOKS` (for `notify_slack`)
@@ -158,7 +159,7 @@ No separate webhook secret is needed - signatures are verified using your existi
 https://your-app.up.railway.app/mcp
 ```
 
-7. Configure your MCP client to connect to that URL with Streamable HTTP transport, supplying one of the `MCP_AUTH_TOKENS` values as a bearer token (`Authorization: Bearer <token>`) - in Claude's connector settings this is usually a direct "API key" field, not an OAuth login page.
+7. Configure your MCP client to connect to that URL with Streamable HTTP transport. In Claude's connector settings, this means going through the login page (`OAUTH_PASSWORD`) - the token you end up connected with is the same as `MCP_AUTH_TOKENS`, it's just obtained via the OAuth flow rather than pasted directly. For a client that supports a plain bearer token field instead, supply one of the `MCP_AUTH_TOKENS` values directly (`Authorization: Bearer <token>`).
 
 ## Notes & gotchas
 
@@ -172,7 +173,7 @@ https://your-app.up.railway.app/mcp
 - `AUTO_FIRST_TOUCH_SMS` is off by default on purpose - see the compliance note in `skills/speed-to-lead/SKILL.md` before turning it on.
 - Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. This server doesn't currently implement retry/backoff - add it if you expect heavy tool usage.
 - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
-- Auth is a static `MCP_AUTH_TOKENS` bearer token, not OAuth (an earlier version implemented dynamic-client-registration OAuth, but kept every client/token in memory, so a redeploy silently logged out every connected client - `src/oauth.js` was removed for this reason). If `MCP_AUTH_TOKENS` is unset, the server accepts unauthenticated requests - only acceptable for local-only development, never for a public deployment.
+- Auth's real credential is the static `MCP_AUTH_TOKENS` bearer token; `src/oauth.js` is a thin OAuth-shaped wrapper around it, kept only because Claude's custom-connector UI requires an OAuth handshake to connect at all (no plain token field). Its `/token` endpoint hands back the static token instead of generating one, so it survives restarts - an earlier version generated and stored real per-login tokens in memory and silently logged out every connected client on every redeploy. If `MCP_AUTH_TOKENS` is unset, the server accepts unauthenticated requests - only acceptable for local-only development, never for a public deployment.
 
 ## Skills
 
