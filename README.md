@@ -9,7 +9,11 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `list_leads` | List/filter leads by pipeline stage, sorted by updated date, with a limit. |
 | `get_lead` | Full detail for one person by id - profile, notes, calls, texts, emails. |
 | `search_leads` | Search leads by name, phone, or email. |
-| `add_lead` | Create a new person/lead, optionally with tags. |
+| `add_lead` | Create a new person/lead, optionally with tags. Does NOT trigger automations. |
+| `create_lead_event` | Send a lead via POST /events - the only path that triggers FUB lead-routing/Action Plans. |
+| `update_lead` | Update an existing person's stage, tags, assignment, price, or background. |
+| `list_pipeline_stages` | List this account's actual pipeline stage names, to avoid silently mismatched stages. |
+| `list_custom_fields` | List this account's configured custom fields (label, API name, type). |
 | `add_note` | Attach a note to an existing person. |
 | `send_text` | Actually send an SMS via Twilio, then log it on the person's FUB timeline. |
 | `list_action_plans` | List the follow-up sequences ("Action Plans") configured in FUB. |
@@ -156,7 +160,8 @@ https://your-app.up.railway.app/mcp
 
 ## Notes & gotchas
 
-- `add_lead` creates a person record directly via `POST /v1/people`. Follow Up Boss's own docs note this will not trigger lead-routing automations or action plans - those only fire from event notifications (`POST /v1/events`) coming from a registered lead source. If you need automations to run, that's a separate integration path; this tool is for straightforward manual contact creation. Use `apply_action_plan` afterwards if you want the new lead enrolled in a sequence.
+- `add_lead` creates a person record directly via `POST /v1/people` and will **not** trigger lead-routing automations or Action Plans. Use `create_lead_event` (`POST /v1/events`) instead when the lead's source has an Action Plan mapped to it in Admin > Lead Flow and you want it to auto-fire - only `source` values that exactly match a configured Lead Source will trigger anything; otherwise it's logged like `add_lead`. `apply_action_plan` remains the manual fallback to enroll a lead in a sequence after the fact.
+- `stage` on `add_lead`/`update_lead`/`create_lead_event` is free text matched against this account's actual pipeline stages - an unrecognized value silently falls back to a default stage instead of erroring (confirmed in practice: `"Attempting to Contact - Buyer"` silently became `"Lead"` when it didn't match a configured stage name). Call `list_pipeline_stages` first if the exact stage matters.
 - FUB's `/textMessages` endpoint only records a log entry - it cannot deliver anything. `send_text` sends the real message through Twilio first, then logs it so it still shows up correctly on the FUB timeline.
 - The FUB API can list Action Plans and enroll/pause people on them, but it cannot create or edit a plan's steps/content - new or edited sequences (subject lines, email bodies, wait times) still have to be built in the FUB UI under Automations. See `skills/fub-sequence-writer/SKILL.md` for how this repo works around that.
 - There is no email-sending tool in this repo. `weekly-market-update` and similar skills produce drafts (optionally routed through `notify_slack` for review) that you still send through your own email tool/ESP.

@@ -207,6 +207,170 @@ export function registerFubTools(server) {
     }
   );
 
+  // create_lead_event - the ONLY path that triggers FUB lead-routing/action plans
+  server.registerTool(
+    "create_lead_event",
+    {
+      title: "Create Lead Event",
+      description:
+        "Send a lead to Follow Up Boss via the events API (POST /v1/events) - the only path " +
+        "that triggers FUB's automatic lead-routing and Action Plan assignment. The `source` " +
+        "value must exactly match a Lead Source configured under Admin > Lead Flow in the FUB " +
+        "account (with an Action Plan mapped to it) for anything to auto-fire; otherwise the " +
+        "event is just logged like add_lead. Only these event types trigger automations: " +
+        "Registration, Seller Inquiry, Property Inquiry, General Inquiry, Visited Open House. " +
+        "Pass personId to update an existing person via this path instead of creating a new one.",
+      inputSchema: {
+        type: z
+          .enum([
+            "Registration",
+            "Inquiry",
+            "Seller Inquiry",
+            "Property Inquiry",
+            "General Inquiry",
+            "Viewed Property",
+            "Saved Property",
+            "Visited Website",
+            "Incoming Call",
+            "Unsubscribed",
+            "Property Search",
+            "Saved Property Search",
+            "Visited Open House",
+            "Viewed Page",
+          ])
+          .describe(
+            "FUB event type. Only Registration, Seller Inquiry, Property Inquiry, General Inquiry, and Visited Open House trigger action plans/automations."
+          ),
+        source: z
+          .string()
+          .describe("Lead source name, e.g. 'Referral Exchange' or 'Speed to Lead'. Must match a source configured in Admin > Lead Flow for an action plan to auto-assign."),
+        firstName: z.string().describe("Lead's first name."),
+        lastName: z.string().optional().describe("Lead's last name."),
+        email: z.string().email().optional().describe("Primary email address."),
+        phone: z.string().optional().describe("Primary phone number."),
+        tags: z.array(z.string()).optional().describe("Tags to apply to the person."),
+        message: z.string().optional().describe("Free-text inquiry message/context for this event."),
+        personId: z
+          .number()
+          .int()
+          .optional()
+          .describe("Existing person id - matches/updates that person instead of creating a new one."),
+      },
+    },
+    async ({ type, source, firstName, lastName, email, phone, tags, message, personId }) => {
+      try {
+        const body = {
+          type,
+          source,
+          ...(message && { message }),
+          person: {
+            ...(personId !== undefined && { id: personId }),
+            firstName,
+            ...(lastName && { lastName }),
+            ...(email && { emails: [{ value: email }] }),
+            ...(phone && { phones: [{ value: phone }] }),
+            ...(tags && tags.length > 0 && { tags }),
+          },
+        };
+        const data = await fub.post("/events", body);
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // update_lead - fix/update stage, tags, assignment, etc. on an existing person
+  server.registerTool(
+    "update_lead",
+    {
+      title: "Update Lead",
+      description:
+        "Update an existing Follow Up Boss person - stage, tags, assignment, price, or " +
+        "background. Use this to correct a stage that didn't match an account's actual " +
+        "pipeline (check list_pipeline_stages first), or to apply real tags after the fact " +
+        "instead of only logging them in a note.",
+      inputSchema: {
+        personId: z.number().int().describe("The Follow Up Boss person id to update."),
+        stage: z.string().optional().describe("Pipeline stage - must match a stage name from list_pipeline_stages."),
+        tags: z.array(z.string()).optional().describe("Tags to apply."),
+        mergeTags: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe("If true (default), tags are added to the person's existing tags. If false, tags REPLACE all existing tags."),
+        assignedTo: z.string().optional().describe("Full name of the agent to reassign this person to."),
+        price: z.number().optional().describe("Price (budget or list price) to set on the person record."),
+        background: z.string().optional().describe("Replaces the background/notes field on the person record."),
+        contacted: z
+          .boolean()
+          .optional()
+          .describe("Marks the person as contacted. Note: setting this to true pauses any active Action Plans for them."),
+      },
+    },
+    async ({ personId, stage, tags, mergeTags, assignedTo, price, background, contacted }) => {
+      try {
+        const body = {
+          ...(stage && { stage }),
+          ...(tags && tags.length > 0 && { tags }),
+          ...(assignedTo && { assignedTo }),
+          ...(price !== undefined && { price }),
+          ...(background && { background }),
+          ...(contacted !== undefined && { contacted }),
+        };
+        const query = tags && tags.length > 0 ? { mergeTags: mergeTags === false ? "false" : "true" } : undefined;
+        const data = await fub.put(`/people/${personId}`, body, query);
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // list_pipeline_stages - look up an account's actual stage names before setting one
+  server.registerTool(
+    "list_pipeline_stages",
+    {
+      title: "List Pipeline Stages",
+      description:
+        "List the pipeline stages configured in this Follow Up Boss account (e.g. 'Lead', " +
+        "'Hot', 'Under Contract'). Stage names are account-specific - check this before " +
+        "passing a `stage` value to add_lead/update_lead/create_lead_event, since an " +
+        "unrecognized name will silently fall back to a default stage instead of erroring.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const data = await fub.get("/stages");
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // list_custom_fields - discover custom field names before using customX fields
+  server.registerTool(
+    "list_custom_fields",
+    {
+      title: "List Custom Fields",
+      description:
+        "List the custom fields configured in this Follow Up Boss account (label, API name, " +
+        "type, and choices for dropdowns). Note: add_lead/update_lead/create_lead_event don't " +
+        "currently expose a generic custom-field parameter - use this to see what's configured " +
+        "and confirm exact field names before that's added.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const data = await fub.get("/customFields");
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
   // add_note - attach a note to a person
   server.registerTool(
     "add_note",

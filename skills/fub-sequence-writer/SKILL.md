@@ -11,6 +11,7 @@ Generic FUB drips read like "just checking in, still looking?" This skill drafts
 
 - `list_action_plans` - lists existing Action Plans (sequences) already built in FUB, with id/name/status.
 - `apply_action_plan` - enrolls a specific person in an existing plan by id.
+- `create_lead_event` - if an Action Plan is mapped to a Lead Source under Admin > Lead Flow, sending a lead through this (instead of `add_lead`) with a matching `source` auto-enrolls them at creation time - useful when this skill's segment (e.g. "Facebook Lead - Downsizing") corresponds to a real configured source rather than a plan you'd enroll people in manually after the fact.
 - There is **no API to create or edit an Action Plan's steps** (subject lines, email bodies, text copy, wait times). That has to be built in the FUB UI under Automations.
 
 So this skill's job is to **draft the content**, not to programmatically build the plan. Always tell the user clearly: "here's the sequence copy - paste these steps into a new/existing Action Plan in FUB" rather than implying it was created automatically. If they want the lead enrolled in an *existing* plan while a new one is being built, offer `apply_action_plan` as a separate action.

@@ -16,9 +16,9 @@ Real leads show up as a random text, a screenshot of a conversation, or a quick 
    - Source, if inferable (e.g. "came in from a YouTube video", "met at an open house") - otherwise leave blank rather than guessing
    - The full conversation text/context worth preserving
 
-2. **Check for an existing record first.** Call `search_leads` with whatever identifiers you have (name, phone, or email). If a match exists, don't create a duplicate - use `add_note` to attach the new context to the existing person instead, and tell the user you found an existing match.
+2. **Check for an existing record first.** Call `search_leads` with whatever identifiers you have (name, phone, or email). If a match exists, don't create a duplicate - use `add_note` to attach the new context to the existing person instead, use `update_lead` (with `mergeTags: true`, the default) if there are new tags to add, and tell the user you found an existing match.
 
-3. **Create the lead.** If no match, call `add_lead` with the extracted fields. Use `background` for a short structured summary (not the full raw transcript) and set `tags` if the user's intent maps to something like `["Buyer"]`, `["Seller"]`, or a lead-source tag.
+3. **Create the lead.** If no match, call `add_lead` with the extracted fields. Use `background` for a short structured summary (not the full raw transcript) and set `tags` if the user's intent maps to something like `["Buyer"]`, `["Seller"]`, or a lead-source tag - `add_lead` applies tags directly, no note-workaround needed. If a `stage` matters and you're not sure it matches this account's actual pipeline, call `list_pipeline_stages` first - an unrecognized stage name silently falls back to a default instead of erroring.
 
 4. **Log the raw context as a note.** Call `add_note` on the new (or existing) person with the full screenshot transcript / dictated details as the note body, so nothing is lost even if your extraction missed something. Give the note a short `subject` like "Captured from screenshot" or "Captured from voice note".
 
@@ -30,4 +30,5 @@ Real leads show up as a random text, a screenshot of a conversation, or a quick 
 
 - Never fabricate a phone number, email, or last name that isn't actually present in the source material - leave the field blank instead.
 - If the screenshot/note contains a stated future timeframe (e.g. "looking to buy in 2028"), put it in `background` verbatim so `fub-lead-scoring` can pick it up later - don't try to score the lead as part of this workflow.
-- Adding a person this way does **not** trigger FUB's lead-routing automations or Action Plans (that only happens via the `/events` endpoint from a registered source). If the user wants the new lead enrolled in a follow-up sequence, use `list_action_plans` + `apply_action_plan` as a separate step.
+- Adding a person via `add_lead` does **not** trigger FUB's lead-routing automations or Action Plans. If the lead's source has an Action Plan mapped to it in FUB (Admin > Lead Flow), use `create_lead_event` instead of `add_lead` so it fires automatically - the `source` value must exactly match what's configured there. Otherwise, use `list_action_plans` + `apply_action_plan` as a manual follow-up step.
+- If a real tag needs to be added to a person that already exists (rather than at creation time), use `update_lead` - don't fall back to logging it in a note unless `update_lead` itself fails.
