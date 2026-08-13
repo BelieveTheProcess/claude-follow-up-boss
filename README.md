@@ -43,7 +43,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 
 All secrets are read from environment variables at request time. They are never hardcoded or logged, and `.env` is git-ignored - only `.env.example` (with blank values) is committed.
 
-Optionally, you can also require callers of this MCP server to present a bearer token, via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens). Leave it blank for local development; set it once you deploy publicly.
+**Connecting client (Claude, etc.)** - this server requires a static bearer token via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens) for any deployment reachable over the internet; leave it blank only for local-only development. This used to be a full dynamic-client-registration OAuth flow, but that implementation kept every registered client and issued token in memory - a redeploy (any process restart) wiped it all and broke every connected client until they redid the entire auth flow. A static token has no server-side state to lose, so it survives restarts and redeploys. If you're migrating from the old OAuth setup: generate a token, set `MCP_AUTH_TOKENS`, then in Claude's connector settings remove and re-add this connector, supplying the token directly instead of going through a password/login page.
 
 ## Project layout
 
@@ -146,7 +146,7 @@ No separate webhook secret is needed - signatures are verified using your existi
 3. Railway auto-detects Node.js and runs `npm install` then `npm start`. No Procfile is needed, but you can add one (`web: npm start`) if you prefer to be explicit.
 4. In the Railway project's Variables tab, add whichever of these you need:
    - `FUB_API_KEY`, `FUB_SYSTEM`, `FUB_SYSTEM_KEY`
-   - `MCP_AUTH_TOKENS` (recommended once public - a long random token)
+   - `MCP_AUTH_TOKENS` (required once public - a long random token; see "How auth works" above)
    - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (for `send_text`)
    - `REALGEEKS_USERNAME`, `REALGEEKS_PASSWORD`, `REALGEEKS_SITE_UUID` (for `sync_lead_to_realgeeks`)
    - `SLACK_WEBHOOKS` (for `notify_slack`)
@@ -158,7 +158,7 @@ No separate webhook secret is needed - signatures are verified using your existi
 https://your-app.up.railway.app/mcp
 ```
 
-7. Configure your MCP client to connect to that URL with Streamable HTTP transport, sending `Authorization: Bearer <token>` if you set `MCP_AUTH_TOKENS`.
+7. Configure your MCP client to connect to that URL with Streamable HTTP transport, supplying one of the `MCP_AUTH_TOKENS` values as a bearer token (`Authorization: Bearer <token>`) - in Claude's connector settings this is usually a direct "API key" field, not an OAuth login page.
 
 ## Notes & gotchas
 
@@ -172,6 +172,7 @@ https://your-app.up.railway.app/mcp
 - `AUTO_FIRST_TOUCH_SMS` is off by default on purpose - see the compliance note in `skills/speed-to-lead/SKILL.md` before turning it on.
 - Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. This server doesn't currently implement retry/backoff - add it if you expect heavy tool usage.
 - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
+- Auth is a static `MCP_AUTH_TOKENS` bearer token, not OAuth (an earlier version implemented dynamic-client-registration OAuth, but kept every client/token in memory, so a redeploy silently logged out every connected client - `src/oauth.js` was removed for this reason). If `MCP_AUTH_TOKENS` is unset, the server accepts unauthenticated requests - only acceptable for local-only development, never for a public deployment.
 
 ## Skills
 
