@@ -181,10 +181,12 @@ https://your-app.up.railway.app/mcp
 
 **Lead flow & engagement:**
 - `speed-to-lead` - automatic: new lead in FUB -> urgent task + Slack alert (+ optional auto-text) within seconds. See its compliance note before enabling auto-text.
+- `daily-crm-debrief` - one morning snapshot (tasks due/overdue, Hot/Warm leads, missed calls) posted to Slack - the FUB equivalent of a Gmail/Calendar daily debrief.
 - `stale-lead-revival` - find leads gone quiet and draft a specific win-back touch for each.
 - `missed-call-followup` - find unanswered calls across the pipeline and draft same-day "sorry I missed you" texts.
 - `fub-lead-scoring` - daily Hot/Warm/Cool follow-up list, scored on motivation, timeframe, financing, and recent engagement.
 - `fub-lead-capture` - turn a screenshot of a text/email thread, or a quick spoken note, into a new lead + note.
+- `expired-fsbo-prospecting` - turn an MLS-scraped or pasted expired/FSBO list into deduplicated, tagged FUB leads. Read its compliance note (DNC/TCPA) before contacting anyone it adds.
 - `fub-sequence-writer` - draft personalized follow-up sequences (referencing your own video/content library) for FUB Action Plans.
 - `openhouse-followup` - turn a sign-in sheet into logged leads plus same-day follow-up drafts.
 
@@ -193,6 +195,7 @@ https://your-app.up.railway.app/mcp
 - `weekly-market-update` - a general market update plus localized versions per farm area.
 - `consultation-prep-sheet` - a one-page prep sheet from a lead's FUB history before a listing/buyer appointment.
 - `social-media-content-batch` - five related social posts from one topic/theme.
+- `buyer-seller-journey-visual` - a branded, interactive step-by-step buyer/seller journey artifact for consults and listing presentations.
 
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
