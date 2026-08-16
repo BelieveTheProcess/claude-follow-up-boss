@@ -1,4 +1,5 @@
-import { randomUUID, createHash, timingSafeEqual } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { timingSafeEqualStr, escapeHtml } from "./security.js";
 
 // OAuth surface for MCP clients (Claude's custom-connector flow, specifically)
 // that require a remote MCP server to speak OAuth - dynamic client
@@ -24,16 +25,9 @@ function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function verifyPkce(codeVerifier, codeChallenge) {
+export function verifyPkce(codeVerifier, codeChallenge) {
   const hash = createHash("sha256").update(codeVerifier).digest();
   return base64url(hash) === codeChallenge;
-}
-
-function timingSafeEqualStr(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
 }
 
 function primaryAuthToken() {
@@ -94,6 +88,11 @@ export function registerOAuthRoutes(app) {
       return res.status(400).send("Unsupported request: only response_type=code with PKCE (S256) is supported");
     }
 
+    // client_id/redirect_uri/code_challenge/state are attacker-influenceable
+    // (redirect_uri and code_challenge in particular are never validated
+    // against a stored format at /register or /authorize) - escape all four
+    // before interpolating into HTML, or a crafted /authorize link could
+    // break out of an attribute and inject script into this password page.
     const html = [
       "<!doctype html>",
       "<html>",
@@ -102,10 +101,10 @@ export function registerOAuthRoutes(app) {
       "<h2>Connect to Follow Up Boss</h2>",
       "<p>Enter your access password to allow this Claude app to connect.</p>",
       "<form method='POST' action='/authorize'>",
-      `<input type='hidden' name='client_id' value='${client_id}' />`,
-      `<input type='hidden' name='redirect_uri' value='${redirect_uri}' />`,
-      `<input type='hidden' name='code_challenge' value='${code_challenge}' />`,
-      `<input type='hidden' name='state' value='${state}' />`,
+      `<input type='hidden' name='client_id' value='${escapeHtml(client_id)}' />`,
+      `<input type='hidden' name='redirect_uri' value='${escapeHtml(redirect_uri)}' />`,
+      `<input type='hidden' name='code_challenge' value='${escapeHtml(code_challenge)}' />`,
+      `<input type='hidden' name='state' value='${escapeHtml(state)}' />`,
       "<input type='password' name='password' placeholder='Access password' autofocus style='width: 100%; padding: 8px; margin-bottom: 12px;' />",
       "<button type='submit' style='width: 100%; padding: 8px;'>Connect</button>",
       "</form>",

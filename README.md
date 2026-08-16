@@ -115,6 +115,12 @@ MCP endpoint: POST/GET/DELETE http://localhost:3000/mcp
 
 Point an MCP client at `http://localhost:3000/mcp` (Streamable HTTP transport). A quick health check is also available at `GET /health`.
 
+6. Run the test suite (unit tests for the pure/security-sensitive logic - signature verification, PKCE, template filling, query building, timing-safe comparisons - using Node's built-in test runner, no extra dependency):
+
+```bash
+npm test
+```
+
 ## Real Geeks setup
 
 Unlike the FUB API key, Real Geeks credentials aren't self-service:
@@ -171,7 +177,7 @@ https://your-app.up.railway.app/mcp
 - `skills/youtube-clip-agent/SKILL.md` is a setup/design guide, not a working integration - it depends on Higsfield and YouTube Analytics API credentials that aren't configured here. Read it before assuming clipping is automated.
 - `/webhooks/fub` only handles `peopleCreated` today. FUB supports many more event types (stage changes, calls, texts, etc.) - extending `src/webhooks.js` to react to those is straightforward but deliberately not done until asked for, since each new automatic reaction is another thing that fires without a human in the loop.
 - `AUTO_FIRST_TOUCH_SMS` is off by default on purpose - see the compliance note in `skills/speed-to-lead/SKILL.md` before turning it on.
-- Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. This server doesn't currently implement retry/backoff - add it if you expect heavy tool usage.
+- Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. `fubClient.js` retries a 429 or 5xx up to 3 times with backoff (honoring `Retry-After` when FUB sends one) before surfacing the error to the caller.
 - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
 - Auth's real credential is the static `MCP_AUTH_TOKENS` bearer token; `src/oauth.js` is a thin OAuth-shaped wrapper around it, kept only because Claude's custom-connector UI requires an OAuth handshake to connect at all (no plain token field). Its `/token` endpoint hands back the static token instead of generating one, so it survives restarts - an earlier version generated and stored real per-login tokens in memory and silently logged out every connected client on every redeploy. If `MCP_AUTH_TOKENS` is unset, the server accepts unauthenticated requests - only acceptable for local-only development, never for a public deployment.
 

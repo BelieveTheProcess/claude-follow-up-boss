@@ -17,7 +17,7 @@ import { fub } from "./fubClient.js";
 import { sendSms, fromNumber as twilioFromNumber } from "./twilioClient.js";
 import { postToSlack } from "./slackClient.js";
 
-function verifyFubSignature(rawBody, signatureHeader) {
+export function verifyFubSignature(rawBody, signatureHeader) {
   const systemKey = process.env.FUB_SYSTEM_KEY;
   if (!systemKey || !signatureHeader) return false;
 
@@ -30,7 +30,7 @@ function verifyFubSignature(rawBody, signatureHeader) {
   return crypto.timingSafeEqual(expectedBuf, actualBuf);
 }
 
-function fillTemplate(template, values) {
+export function fillTemplate(template, values) {
   return template.replace(/\{(\w+)\}/g, (match, key) => (values[key] ?? match));
 }
 

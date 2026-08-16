@@ -8,6 +8,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerFubTools } from "./tools/index.js";
 import { registerFubWebhookRoute } from "./webhooks.js";
 import { registerOAuthRoutes } from "./oauth.js";
+import { timingSafeEqualStr } from "./security.js";
 
 const PORT = process.env.PORT || 3000;
 const AUTH_TOKENS = (process.env.MCP_AUTH_TOKENS || "").split(",").map((t) => t.trim()).filter(Boolean);
@@ -25,7 +26,11 @@ function checkAuth(req, res) {
   if (!AUTH_REQUIRED) return true;
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (token && AUTH_TOKENS.includes(token)) return true;
+  // Check every configured token (rather than short-circuiting via
+  // Array.includes) and compare each one in constant time, so neither which
+  // token matched nor how far a wrong guess got is observable from timing.
+  const isValid = token ? AUTH_TOKENS.reduce((acc, t) => timingSafeEqualStr(token, t) || acc, false) : false;
+  if (isValid) return true;
   res.status(401).json({ jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" }, id: null });
   return false;
 }
