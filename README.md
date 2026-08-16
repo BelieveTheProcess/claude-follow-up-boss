@@ -193,6 +193,7 @@ https://your-app.up.railway.app/mcp
 - `fub-lead-scoring` - daily Hot/Warm/Cool follow-up list, scored on motivation, timeframe, financing, and recent engagement.
 - `fub-lead-capture` - turn a screenshot of a text/email thread, or a quick spoken note, into a new lead + note.
 - `expired-fsbo-prospecting` - turn an MLS-scraped or pasted expired/FSBO list into deduplicated, tagged FUB leads. Read its compliance note (DNC/TCPA) before contacting anyone it adds.
+- `dealmachine-prospecting` - search DealMachine (via its Zapier connector) for motivated-seller signals in a target area and turn matches into deduplicated, tagged FUB leads. Same compliance posture as `expired-fsbo-prospecting`, plus a credit-cost preview step and state-specific pre-foreclosure contact rules to check.
 - `fub-sequence-writer` - draft personalized follow-up sequences (referencing your own video/content library) for FUB Action Plans.
 - `openhouse-followup` - turn a sign-in sheet into logged leads plus same-day follow-up drafts.
 
