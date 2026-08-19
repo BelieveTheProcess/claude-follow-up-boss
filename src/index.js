@@ -1,3 +1,11 @@
+// Loads .env into process.env if the file exists (silently no-ops otherwise,
+// e.g. on Railway where real env vars are injected directly, and never
+// overrides a real env var that's already set) - must run before any other
+// module reads process.env for a secret. quiet: true skips dotenv's startup
+// banner - this is an HTTP server, not a stdio-transport one, so stray
+// stdout wouldn't corrupt anything, but the banner is just log noise here.
+import dotenv from "dotenv";
+dotenv.config({ quiet: true });
 // Force fresh deploy: ensure crypto polyfill fix is actually live (see cryptoPolyfill.js)
 import "./cryptoPolyfill.js";
 import express from "express";
