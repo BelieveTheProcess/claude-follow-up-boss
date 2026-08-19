@@ -1087,7 +1087,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ id, fields, contact_audience }) => {
       try {
-        const data = await dealMachine.get(`/properties/${id}`, {
+        const data = await dealMachine.get(`/properties/${encodeURIComponent(id)}`, {
           fields: fields ? fields.join(",") : undefined,
           contact_audience,
         });
@@ -1161,7 +1161,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ id, fields }) => {
       try {
-        const data = await dealMachine.get(`/people/${id}`, { fields: fields ? fields.join(",") : undefined });
+        const data = await dealMachine.get(`/people/${encodeURIComponent(id)}`, { fields: fields ? fields.join(",") : undefined });
         return textResult(data);
       } catch (err) {
         return errorResult(err);
