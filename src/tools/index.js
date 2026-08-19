@@ -3,6 +3,7 @@ import { fub } from "../fubClient.js";
 import { sendSms, fromNumber as twilioFromNumber } from "../twilioClient.js";
 import { realGeeks } from "../realGeeksClient.js";
 import { postToSlack } from "../slackClient.js";
+import { dealMachine } from "../dealMachineClient.js";
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -887,6 +888,444 @@ export function registerFubTools(server) {
     async ({ channel, text }) => {
       try {
         const data = await postToSlack({ channel, text });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+}
+
+const filterSchema = z
+  .array(
+    z.object({
+      filter_id: z.string().describe("Filter id from dealmachine_filters, e.g. 'is_preforeclosure'."),
+      operator: z
+        .string()
+        .describe("Operator allowed for this filter, e.g. 'is_boolean', 'contains_any', 'greater_than_or_equal', 'date_range'."),
+      value: z.any().describe("The filter value - shape depends on the operator (boolean, number, array of option ids, or a {start,end} range object)."),
+    })
+  )
+  .optional()
+  .describe("Filter conditions, ANDed together. Call dealmachine_filters first to find valid filter_id/operator combinations.");
+
+const locationSchema = z
+  .array(
+    z.object({
+      type: z.enum(["state", "county", "city", "zip_code", "radius"]),
+      code: z
+        .string()
+        .optional()
+        .describe("For state: 2-letter code. For county: FIPS/county code. For city: numeric place id from dealmachine_location_search. For zip_code: 5-digit ZIP."),
+      latitude: z.number().optional().describe("Center latitude, for type 'radius'."),
+      longitude: z.number().optional().describe("Center longitude, for type 'radius'."),
+      radius_miles: z.number().optional().describe("Radius in miles, for type 'radius'."),
+    })
+  )
+  .describe("One or more location scopes. Get a city/county code from dealmachine_location_search first - don't guess one.");
+
+/**
+ * Registers DealMachine tools on the given McpServer instance. Talks to
+ * DealMachine's own REST API directly (see src/dealMachineClient.js) rather
+ * than through a session-level connector - see skills/dealmachine-prospecting
+ * and skills/expired-fsbo-prospecting for the workflows these are meant to
+ * power, including the compliance notes on contacting anyone these tools
+ * surface.
+ */
+export function registerDealMachineTools(server) {
+  // dealmachine_usage - account/plan/credit info, always free
+  server.registerTool(
+    "dealmachine_usage",
+    {
+      title: "DealMachine Usage",
+      description:
+        "Get the connected DealMachine account's org, plan, and credit info. Free - call this " +
+        "before any large search or enrichment batch to confirm there's enough credit left, " +
+        "not after hitting a failure.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const data = await dealMachine.get("/account");
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_location_search - resolve a place name to a location code, free
+  server.registerTool(
+    "dealmachine_location_search",
+    {
+      title: "DealMachine Location Search",
+      description:
+        "Resolve a city/county/state name to the location code dealmachine_property_search and " +
+        "dealmachine_people_search need. Free. Always call this before guessing a location code.",
+      inputSchema: {
+        q: z.string().describe("Location name to match, e.g. 'San Jose' or 'Santa Clara'."),
+        type: z.enum(["state", "county", "city", "zip_code"]).optional().describe("Restrict to one location type."),
+        state: z.string().optional().describe("Optional 2-letter state code to narrow results."),
+      },
+    },
+    async ({ q, type, state }) => {
+      try {
+        const data = await dealMachine.get("/locations/list", { q, type, state });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_filters - list valid filter_id/operator combos, free
+  server.registerTool(
+    "dealmachine_filters",
+    {
+      title: "DealMachine Filters",
+      description:
+        "List available search filters (id, allowed operators, option values for categorical " +
+        "ones) for properties or people. Free. Call this before building a filters array for " +
+        "dealmachine_property_search or dealmachine_people_search rather than guessing filter_ids.",
+      inputSchema: {
+        source_type: z.enum(["properties", "people"]).optional().default("properties"),
+        search: z.string().optional().describe("Filter the list by name, e.g. 'condition' or 'equity'."),
+      },
+    },
+    async ({ source_type, search }) => {
+      try {
+        const data = await dealMachine.get("/filters", { source_type, search });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_fields - list available data fields, free
+  server.registerTool(
+    "dealmachine_fields",
+    {
+      title: "DealMachine Fields",
+      description:
+        "List available data fields for properties or people, to pass in the `fields` array of " +
+        "a search or enrichment call. Free.",
+      inputSchema: {
+        source_type: z.enum(["properties", "people"]).optional().default("properties"),
+        search: z.string().optional().describe("Filter the list by name, e.g. 'condition' or 'equity'."),
+      },
+    },
+    async ({ source_type, search }) => {
+      try {
+        const data = await dealMachine.get("/fields", { source_type, search });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_property_search - the main prospecting search
+  server.registerTool(
+    "dealmachine_property_search",
+    {
+      title: "DealMachine Property Search",
+      description:
+        "Search properties by location and filter criteria (condition, equity, absentee owner, " +
+        "preforeclosure, etc. - see dealmachine_filters). Property-only data (contact_audience " +
+        "'none') is cheap; requesting owner contacts spends people credits per match. Always " +
+        "run a small per_page batch first and check dealmachine_usage before a big pull.",
+      inputSchema: {
+        locations: locationSchema,
+        filters: filterSchema,
+        fields: z.array(z.string()).optional().describe("Extra fields to include beyond the default set."),
+        contact_audience: z
+          .enum(["owners", "owners_and_family", "residents", "renters", "none"])
+          .optional()
+          .default("none")
+          .describe("Which contacts to return with each property. 'none' returns property data only, at no contact-credit cost."),
+        page: z.number().int().min(1).optional().default(1),
+        per_page: z.number().int().min(1).max(100).optional().default(25),
+        sort: z.string().optional().describe("Sort field, e.g. '-estimated_value'."),
+      },
+    },
+    async ({ locations, filters, fields, contact_audience, page, per_page, sort }) => {
+      try {
+        const data = await dealMachine.post("/properties/search", {
+          locations,
+          filters,
+          fields,
+          contact_audience,
+          page,
+          per_page,
+          sort,
+        });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_property_get - single property detail, including owner contacts if requested
+  server.registerTool(
+    "dealmachine_property_get",
+    {
+      title: "DealMachine Property Detail",
+      description:
+        "Get full detail for a single property by its DealMachine property id (from " +
+        "dealmachine_property_search). Requesting contact_audience other than 'none' spends " +
+        "people credits for any owner contact found.",
+      inputSchema: {
+        id: z.string().describe("DealMachine property id, e.g. 'prop_12345'."),
+        fields: z.array(z.string()).optional().describe("Extra fields to include beyond the default set."),
+        contact_audience: z
+          .enum(["owners", "owners_and_family", "residents", "renters", "none"])
+          .optional()
+          .default("none"),
+      },
+    },
+    async ({ id, fields, contact_audience }) => {
+      try {
+        const data = await dealMachine.get(`/properties/${id}`, {
+          fields: fields ? fields.join(",") : undefined,
+          contact_audience,
+        });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_property_count - count matches without paying for records
+  server.registerTool(
+    "dealmachine_property_count",
+    {
+      title: "DealMachine Property Count",
+      description:
+        "Count properties matching a location/filter combination without returning any " +
+        "records - free. Use this to size a search before running dealmachine_property_search.",
+      inputSchema: {
+        locations: locationSchema,
+        filters: filterSchema,
+      },
+    },
+    async ({ locations, filters }) => {
+      try {
+        const data = await dealMachine.post("/properties/count", { locations, filters });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_people_search - search owners/contacts directly
+  server.registerTool(
+    "dealmachine_people_search",
+    {
+      title: "DealMachine People Search",
+      description:
+        "Search for people/contacts by location and filter criteria. Spends people credits per " +
+        "match returned - run dealmachine_property_count-style sizing first where possible.",
+      inputSchema: {
+        locations: locationSchema,
+        filters: filterSchema,
+        fields: z.array(z.string()).optional(),
+        anchor: z.enum(["person", "property"]).optional().default("person").describe("Whether results are grouped per person or per property."),
+        page: z.number().int().min(1).optional().default(1),
+        per_page: z.number().int().min(1).max(100).optional().default(25),
+      },
+    },
+    async ({ locations, filters, fields, anchor, page, per_page }) => {
+      try {
+        const data = await dealMachine.post("/people/search", { locations, filters, fields, anchor, page, per_page });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_people_get - single person detail
+  server.registerTool(
+    "dealmachine_people_get",
+    {
+      title: "DealMachine Person Detail",
+      description: "Get full detail for a single person by their DealMachine person id.",
+      inputSchema: {
+        id: z.string().describe("DealMachine person id, e.g. 'per_12345'."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ id, fields }) => {
+      try {
+        const data = await dealMachine.get(`/people/${id}`, { fields: fields ? fields.join(",") : undefined });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_enrich_address - property + owner lookup by address
+  server.registerTool(
+    "dealmachine_enrich_address",
+    {
+      title: "DealMachine Enrich by Address",
+      description: "Look up property and owner data for one or more street addresses. Spends credits per match.",
+      inputSchema: {
+        addresses: z.array(z.string()).describe("Full street addresses, e.g. '1200 Barton Springs Rd, Austin, TX 78704'."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ addresses, fields }) => {
+      try {
+        const data = await dealMachine.post("/enrichment/address", {
+          addresses: addresses.map((full_address) => ({ full_address })),
+          fields,
+        });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_enrich_apn - property lookup by assessor parcel number
+  server.registerTool(
+    "dealmachine_enrich_apn",
+    {
+      title: "DealMachine Enrich by APN",
+      description: "Look up a property by Assessor Parcel Number (APN) and state. Spends credits per match.",
+      inputSchema: {
+        apn: z.string().describe("Assessor Parcel Number, e.g. '01-2345-0067'."),
+        state: z.string().describe("2-letter state code."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ apn, state, fields }) => {
+      try {
+        const data = await dealMachine.post("/enrichment/apn", { apns: [{ apn, state }], fields });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_enrich_name - person lookup by name
+  server.registerTool(
+    "dealmachine_enrich_name",
+    {
+      title: "DealMachine Enrich by Name",
+      description:
+        "Look up a person's contact info by name. Ambiguous names (common first+last combos) " +
+        "can return several different real people - narrow with state when possible, and check " +
+        "age/phone/address on the result before treating a match as certain rather than assuming " +
+        "the first result is the right person.",
+      inputSchema: {
+        first_name: z.string().optional(),
+        last_name: z.string().describe("Required."),
+        state: z.string().optional().describe("2-letter state code, narrows results significantly."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ first_name, last_name, state, fields }) => {
+      try {
+        const data = await dealMachine.post("/enrichment/name", {
+          people: [{ first_name, last_name, state }],
+          fields,
+        });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_enrich_phone - reverse phone lookup
+  server.registerTool(
+    "dealmachine_enrich_phone",
+    {
+      title: "DealMachine Enrich by Phone",
+      description: "Reverse-lookup a phone number to the person and any associated property. Spends credits per match.",
+      inputSchema: {
+        phone: z.string().describe("Phone number, digits only or formatted."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ phone, fields }) => {
+      try {
+        const data = await dealMachine.post("/enrichment/phone", { phones: [{ phone }], fields });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_enrich_email - reverse email lookup
+  server.registerTool(
+    "dealmachine_enrich_email",
+    {
+      title: "DealMachine Enrich by Email",
+      description: "Reverse-lookup an email address to the person and any associated property. Spends credits per match.",
+      inputSchema: {
+        email: z.string().describe("Email address."),
+        fields: z.array(z.string()).optional(),
+      },
+    },
+    async ({ email, fields }) => {
+      try {
+        const data = await dealMachine.post("/enrichment/email", { emails: [{ email }], fields });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_check_dnc - National Do Not Call registry check
+  server.registerTool(
+    "dealmachine_check_dnc",
+    {
+      title: "DealMachine DNC Check",
+      description:
+        "Check whether a phone number is on the National Do Not Call registry. Run this before " +
+        "any call/text outreach to a number sourced from a search or enrichment call - " +
+        "prospecting from public/skip-traced data does not imply consent to be called or texted.",
+      inputSchema: {
+        phone: z.string().describe("Phone number to check."),
+      },
+    },
+    async ({ phone }) => {
+      try {
+        const data = await dealMachine.post("/dnc-check", { phones: [phone] });
+        return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // dealmachine_comps - comparable sales for a subject property
+  server.registerTool(
+    "dealmachine_comps",
+    {
+      title: "DealMachine Comps",
+      description: "Find comparable recent sales for a subject property, for pricing/ARV conversations.",
+      inputSchema: {
+        property_id: z.string().describe("Subject property's DealMachine id, e.g. 'prop_12345'."),
+        radius_miles: z.number().optional().describe("Search radius in miles. Defaults to a small radius around the subject property."),
+        timeframe: z.enum(["3months", "6months", "12months", "24months"]).optional().default("6months"),
+        limit: z.number().int().min(1).max(100).optional(),
+      },
+    },
+    async ({ property_id, radius_miles, timeframe, limit }) => {
+      try {
+        const data = await dealMachine.post("/comps", { property_id, radius_miles, timeframe, limit });
         return textResult(data);
       } catch (err) {
         return errorResult(err);

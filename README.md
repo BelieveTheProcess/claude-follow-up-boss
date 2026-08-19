@@ -1,6 +1,6 @@
 # Follow Up Boss MCP Server
 
-A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` and Streamable HTTP transport, that wraps the Follow Up Boss API (plus Twilio, Real Geeks, and Slack) so any MCP-compatible AI client (Claude, etc.) can read and manage your leads.
+A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` and Streamable HTTP transport, that wraps the Follow Up Boss API (plus Twilio, Real Geeks, Slack, and DealMachine) so any MCP-compatible AI client (Claude, etc.) can read and manage your leads.
 
 ## Tools
 
@@ -27,6 +27,22 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `complete_task` | Mark a task done (or reopen it). |
 | `list_calls` | List logged calls, optionally across the whole pipeline (no personId), for missed-call follow-up. |
 | `register_fub_webhook` | Register a FUB webhook pointed at this server's `/webhooks/fub` endpoint (speed-to-lead setup). |
+| `dealmachine_usage` | Get the connected DealMachine account's plan/credit info. Free - check before a big batch. |
+| `dealmachine_location_search` | Resolve a city/county/state name to the location code the search tools need. Free. |
+| `dealmachine_filters` | List valid filter_id/operator combos for property or people search. Free. |
+| `dealmachine_fields` | List available data fields to request in a search or enrichment call. Free. |
+| `dealmachine_property_search` | Search properties by location + filters (condition, equity, absentee owner, preforeclosure, etc.). |
+| `dealmachine_property_get` | Full detail for one property by id, optionally including owner contacts. |
+| `dealmachine_property_count` | Count properties matching a location/filter combo without paying for records. Free. |
+| `dealmachine_people_search` | Search for people/owners directly by location + filters. |
+| `dealmachine_people_get` | Full detail for one person by id. |
+| `dealmachine_enrich_address` | Property + owner lookup by street address. |
+| `dealmachine_enrich_apn` | Property lookup by Assessor Parcel Number. |
+| `dealmachine_enrich_name` | Person lookup by name (narrow with state - common names return multiple real people). |
+| `dealmachine_enrich_phone` | Reverse phone lookup to a person/property. |
+| `dealmachine_enrich_email` | Reverse email lookup to a person/property. |
+| `dealmachine_check_dnc` | Check a phone number against the National Do Not Call registry. |
+| `dealmachine_comps` | Comparable recent sales for a subject property. |
 
 ## How auth works
 
@@ -41,6 +57,8 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 
 **Slack** - `notify_slack` posts to one of your Slack channels via an Incoming Webhook URL. `SLACK_WEBHOOKS` is a JSON object mapping a channel label you choose (e.g. `"marketing-review"`) to that channel's webhook URL - see `skills/slack-review-queue/SKILL.md` for setup.
 
+**DealMachine** - the `dealmachine_*` tools use Bearer Auth with `DEALMACHINE_API_KEY` (find it in the DealMachine app under your profile icon -> Application Settings -> API). This talks to DealMachine's own REST API directly (`https://api.v2.dealmachine.com/v1`) rather than through Zapier or DealMachine's own hosted MCP connector - see "Notes & gotchas" below for why that distinction matters.
+
 All secrets are read from environment variables at request time. They are never hardcoded or logged, and `.env` is git-ignored - only `.env.example` (with blank values) is committed.
 
 **Connecting client (Claude, etc.)** - the real credential is a static bearer token via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens), required for any deployment reachable over the internet; leave it blank only for local-only development. On top of that, `src/oauth.js` implements an OAuth shell (dynamic client registration + PKCE via `/register`, `/authorize`, `/token`) purely because Claude's custom-connector UI requires a remote MCP server to complete an OAuth handshake to connect at all - it has no plain "paste a token" field. Client registrations and authorization codes from that flow are short-lived and kept in memory (fine, they're only used for a few minutes during the interactive login), but `/token` does **not** generate and store a fresh random access token - it hands back the server's own `MCP_AUTH_TOKENS` value directly. So the token obtained through the OAuth login is the same static secret either way, and stays valid across restarts/redeploys - unlike an earlier version of this file that generated and stored real tokens in memory and silently logged out every connected client on every redeploy. `OAUTH_PASSWORD` gates the login page itself (the human-interactive step); set it alongside `MCP_AUTH_TOKENS`.
@@ -54,8 +72,9 @@ src/
   twilioClient.js       Thin wrapper around the Twilio SDK for sending SMS
   realGeeksClient.js     Thin fetch wrapper: adds Real Geeks Basic Auth
   slackClient.js          Thin wrapper around Slack Incoming Webhooks
-  webhooks.js               FUB webhook receiver: signature verification + speed-to-lead reaction
-  tools/index.js              The MCP tool definitions, calling the clients above
+  dealMachineClient.js      Thin fetch wrapper: adds DealMachine Bearer auth + retry/backoff
+  webhooks.js                 FUB webhook receiver: signature verification + speed-to-lead reaction
+  tools/index.js                The MCP tool definitions, calling the clients above
 .env.example
 package.json
 BRAND.md               Fillable brand/voice doc the content skills read before drafting
@@ -94,9 +113,11 @@ REALGEEKS_PASSWORD=
 REALGEEKS_SITE_UUID=
 
 SLACK_WEBHOOKS=
+
+DEALMACHINE_API_KEY=
 ```
 
-Twilio, Real Geeks, and Slack variables are only required if you use `send_text`, `sync_lead_to_realgeeks`, or `notify_slack` respectively - the FUB tools work fine without them.
+Twilio, Real Geeks, Slack, and DealMachine variables are only required if you use `send_text`, `sync_lead_to_realgeeks`, `notify_slack`, or a `dealmachine_*` tool respectively - the FUB tools work fine without them.
 
 Also fill in `BRAND.md` at the repo root with your voice/tone/farm-area details - the content-generating skills (listing descriptions, market updates, social posts, open house follow-up) read it before drafting anything.
 
@@ -180,6 +201,8 @@ https://your-app.up.railway.app/mcp
 - Rate limits: Follow Up Boss enforces roughly 1,000 requests per 10 minutes per API key, returning 429 if exceeded. `fubClient.js` retries a 429 or 5xx up to 3 times with backoff (honoring `Retry-After` when FUB sends one) before surfacing the error to the caller.
 - Sessions are held in memory (a Map in `src/index.js`). That's fine for a single Railway instance; if you ever scale to multiple instances you'll need a shared session store instead.
 - Auth's real credential is the static `MCP_AUTH_TOKENS` bearer token; `src/oauth.js` is a thin OAuth-shaped wrapper around it, kept only because Claude's custom-connector UI requires an OAuth handshake to connect at all (no plain token field). Its `/token` endpoint hands back the static token instead of generating one, so it survives restarts - an earlier version generated and stored real per-login tokens in memory and silently logged out every connected client on every redeploy. If `MCP_AUTH_TOKENS` is unset, the server accepts unauthenticated requests - only acceptable for local-only development, never for a public deployment.
+- The `dealmachine_*` tools talk to DealMachine's public REST API (`https://api.v2.dealmachine.com/v1`) directly, rather than through a Zapier bridge or DealMachine's own hosted MCP connector. That's deliberate: a Zapier-mediated connection has its own separate per-account "tasks" quota on top of DealMachine's normal credits (hit repeatedly during testing, including on calls that don't spend any DealMachine credit at all, e.g. `list_fields`), and neither a Zapier action nor DealMachine's hosted connector can be attached to a *scheduled* Claude session the way tools on this repo's own MCP server can. Tradeoff: `dealMachineClient.js` and the `dealmachine_*` tool schemas are built from DealMachine's published API docs (`api.docs.dealmachine.com`), not from a live end-to-end test against a real `DEALMACHINE_API_KEY` - the request/response shapes for less-common fields (e.g. exact `filters`/`locations` array format for edge-case operators like `date_range`) may need small fixes once exercised against real data. `dealmachine_usage` and `dealmachine_location_search` are the cheapest calls to sanity-check the client against first.
+- DealMachine's documented rate limit is 10 requests/second and 5,000/day per API key; `dealMachineClient.js` retries a 429 or 5xx up to 3 times with backoff (honoring `Retry-After` when sent), same pattern as `fubClient.js`. Enrichment/skip-trace endpoints spend DealMachine credits per match - `dealmachine_usage` and `dealmachine_property_count`/`dealmachine_filters` are free and should be called before a large batch, per `skills/dealmachine-prospecting/SKILL.md`.
 
 ## Skills
 

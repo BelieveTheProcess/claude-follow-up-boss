@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { registerFubTools } from "./tools/index.js";
+import { registerFubTools, registerDealMachineTools } from "./tools/index.js";
 import { registerFubWebhookRoute } from "./webhooks.js";
 import { registerOAuthRoutes } from "./oauth.js";
 import { timingSafeEqualStr } from "./security.js";
@@ -38,6 +38,7 @@ function checkAuth(req, res) {
 function createServer() {
   const server = new McpServer({ name: "followupboss-mcp-server", version: "1.0.0" });
   registerFubTools(server);
+  registerDealMachineTools(server);
   return server;
 }
 
