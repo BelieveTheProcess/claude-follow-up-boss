@@ -970,7 +970,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ q, type, state }) => {
       try {
-        const data = await dealMachine.get("/locations/list", { q, type, state });
+        const data = await dealMachine.get("/locations", { q, type, state });
         return textResult(data);
       } catch (err) {
         return errorResult(err);
@@ -1104,17 +1104,29 @@ export function registerDealMachineTools(server) {
     {
       title: "DealMachine Property Count",
       description:
-        "Count properties matching a location/filter combination without returning any " +
-        "records - free. Use this to size a search before running dealmachine_property_search.",
+        "Count properties matching a location/filter combination without paying for records - " +
+        "free (a per_page:1, contact_audience:none search costs 0 credits). Use this to size a " +
+        "search before running dealmachine_property_search with a real per_page/contact_audience.",
       inputSchema: {
         locations: locationSchema,
         filters: filterSchema,
       },
     },
     async ({ locations, filters }) => {
+      // There's no dedicated /properties/count endpoint - DealMachine's own
+      // API 404s on POST /properties/count. dealmachine_property_search
+      // already returns a `totals` object on every call, so run the
+      // cheapest possible search (contact_audience: none, per_page: 1,
+      // which is free) and hand back just the totals.
       try {
-        const data = await dealMachine.post("/properties/count", { locations, filters });
-        return textResult(data);
+        const data = await dealMachine.post("/properties/search", {
+          locations,
+          filters,
+          contact_audience: "none",
+          page: 1,
+          per_page: 1,
+        });
+        return textResult({ totals: data.totals, credits: data.credits });
       } catch (err) {
         return errorResult(err);
       }
@@ -1183,7 +1195,7 @@ export function registerDealMachineTools(server) {
     async ({ addresses, fields }) => {
       try {
         const data = await dealMachine.post("/enrichment/address", {
-          addresses: addresses.map((full_address) => ({ full_address })),
+          data: addresses.map((full_address) => ({ full_address })),
           fields,
         });
         return textResult(data);
@@ -1207,7 +1219,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ apn, state, fields }) => {
       try {
-        const data = await dealMachine.post("/enrichment/apn", { apns: [{ apn, state }], fields });
+        const data = await dealMachine.post("/enrichment/apn", { data: [{ apn, state }], fields });
         return textResult(data);
       } catch (err) {
         return errorResult(err);
@@ -1235,7 +1247,7 @@ export function registerDealMachineTools(server) {
     async ({ first_name, last_name, state, fields }) => {
       try {
         const data = await dealMachine.post("/enrichment/name", {
-          people: [{ first_name, last_name, state }],
+          data: [{ first_name, last_name, state }],
           fields,
         });
         return textResult(data);
@@ -1258,7 +1270,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ phone, fields }) => {
       try {
-        const data = await dealMachine.post("/enrichment/phone", { phones: [{ phone }], fields });
+        const data = await dealMachine.post("/enrichment/phone", { data: [{ phone }], fields });
         return textResult(data);
       } catch (err) {
         return errorResult(err);
@@ -1279,7 +1291,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ email, fields }) => {
       try {
-        const data = await dealMachine.post("/enrichment/email", { emails: [{ email }], fields });
+        const data = await dealMachine.post("/enrichment/email", { data: [{ email }], fields });
         return textResult(data);
       } catch (err) {
         return errorResult(err);
@@ -1287,23 +1299,36 @@ export function registerDealMachineTools(server) {
     }
   );
 
-  // dealmachine_check_dnc - National Do Not Call registry check
+  // dealmachine_check_dnc - Do Not Call status for a phone number
   server.registerTool(
     "dealmachine_check_dnc",
     {
       title: "DealMachine DNC Check",
       description:
-        "Check whether a phone number is on the National Do Not Call registry. Run this before " +
-        "any call/text outreach to a number sourced from a search or enrichment call - " +
-        "prospecting from public/skip-traced data does not imply consent to be called or texted.",
+        "Check whether a phone number is flagged Do Not Call. Run this before any call/text " +
+        "outreach to a number sourced from a search or enrichment call - prospecting from " +
+        "public/skip-traced data does not imply consent to be called or texted. (There's no " +
+        "dedicated DNC endpoint in DealMachine's API - this calls /enrichment/phone, the same " +
+        "endpoint dealmachine_enrich_phone uses, and reads the do_not_call flag off the match.)",
       inputSchema: {
         phone: z.string().describe("Phone number to check."),
       },
     },
     async ({ phone }) => {
       try {
-        const data = await dealMachine.post("/dnc-check", { phones: [phone] });
-        return textResult(data);
+        const data = await dealMachine.post("/enrichment/phone", { data: [{ phone }] });
+        const match = data?.data?.[0];
+        const phoneRecord = match?.contacts?.[0]?.phones?.find((p) => p.number.replace(/\D/g, "").endsWith(phone.replace(/\D/g, "")));
+        return textResult({
+          phone,
+          matched: Boolean(match?.matched),
+          do_not_call: phoneRecord?.do_not_call ?? null,
+          note: match?.matched
+            ? phoneRecord
+              ? undefined
+              : "Number matched a person but this exact phone wasn't in their phone list - do_not_call unknown."
+            : "No person matched this phone number - do_not_call unknown, not necessarily clear.",
+        });
       } catch (err) {
         return errorResult(err);
       }
@@ -1325,7 +1350,7 @@ export function registerDealMachineTools(server) {
     },
     async ({ property_id, radius_miles, timeframe, limit }) => {
       try {
-        const data = await dealMachine.post("/comps", { property_id, radius_miles, timeframe, limit });
+        const data = await dealMachine.post("/comps", { property_ids: [property_id], radius_miles, timeframe, limit });
         return textResult(data);
       } catch (err) {
         return errorResult(err);

@@ -91,12 +91,17 @@ async function dealMachineRequest(method, path, { query, body } = {}) {
     const message =
       (data && (data.error || data.message || data.errorMessage)) ||
       `DealMachine API request failed (${res.status} ${res.statusText})`;
-    // Some DealMachine-family errors come back as an array of strings
-    // rather than one string (seen in practice via the Zapier bridge, e.g.
-    // {"error":["insufficient tasks on account"]}) - normalize either shape
-    // into one readable line instead of letting Array.prototype.toString's
-    // bare comma-join leak into the error message.
-    const messageText = Array.isArray(message) ? message.join("; ") : message;
+    // DealMachine's error field isn't always a plain string - seen in
+    // practice: an array of strings via the Zapier bridge
+    // ({"error":["insufficient tasks on account"]}), and a nested object
+    // from the native REST API itself ({"error":{"code":...,"message":...}}).
+    // Normalize all three shapes into one readable line instead of letting
+    // an object/array leak into the Error message as "[object Object]".
+    const messageText = Array.isArray(message)
+      ? message.join("; ")
+      : message && typeof message === "object"
+        ? message.message || message.error || JSON.stringify(message)
+        : message;
     const err = new Error(`${messageText} [${method} ${path}]`);
     err.status = res.status;
     err.body = data;

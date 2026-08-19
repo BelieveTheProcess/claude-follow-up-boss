@@ -91,6 +91,28 @@ test("dealMachine.get: normalizes an array-shaped error into a readable message"
   );
 });
 
+test("dealMachine.get: normalizes an object-shaped error (real DealMachine 401 shape) into a readable message", async () => {
+  process.env.DEALMACHINE_API_KEY = "dm_sk_live_test";
+  await withMockFetch(
+    [
+      {
+        status: 401,
+        statusText: "Unauthorized",
+        body: {
+          error: {
+            code: "invalid_api_key",
+            message: "Invalid token format. Use API key (dm_sk_live_xxx) or OAuth token (dm_at_live_xxx)",
+            request_id: "req_3ccd99da7eaa55ff",
+          },
+        },
+      },
+    ],
+    async () => {
+      await assert.rejects(() => dealMachine.get("/account"), /Invalid token format/);
+    }
+  );
+});
+
 test("dealMachine.get: gives up after MAX_RETRIES on a persistent 500", async () => {
   process.env.DEALMACHINE_API_KEY = "dm_sk_live_test";
   await withMockFetch(
