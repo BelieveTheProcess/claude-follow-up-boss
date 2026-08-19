@@ -81,6 +81,16 @@ test("dealMachine.post: retries once on a 429 then succeeds", async () => {
   );
 });
 
+test("dealMachine.get: normalizes an array-shaped error into a readable message", async () => {
+  process.env.DEALMACHINE_API_KEY = "dm_sk_live_test";
+  await withMockFetch(
+    [{ status: 402, statusText: "Payment Required", body: { error: ["insufficient tasks on account"] } }],
+    async () => {
+      await assert.rejects(() => dealMachine.get("/account"), /insufficient tasks on account/);
+    }
+  );
+});
+
 test("dealMachine.get: gives up after MAX_RETRIES on a persistent 500", async () => {
   process.env.DEALMACHINE_API_KEY = "dm_sk_live_test";
   await withMockFetch(

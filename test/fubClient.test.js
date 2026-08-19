@@ -89,6 +89,13 @@ test("fub.post: retries once on a 429 then succeeds", async () => {
   );
 });
 
+test("fub.get: normalizes an array-shaped error into a readable message", async () => {
+  setFubEnv();
+  await withMockFetch([{ status: 402, statusText: "Payment Required", body: { error: ["insufficient tasks on account"] } }], async () => {
+    await assert.rejects(() => fub.get("/people"), /insufficient tasks on account/);
+  });
+});
+
 test("fub.get: gives up after MAX_RETRIES on a persistent 500", async () => {
   setFubEnv();
   await withMockFetch(

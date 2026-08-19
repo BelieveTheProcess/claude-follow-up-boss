@@ -95,7 +95,12 @@ async function fubRequest(method, path, { query, body } = {}) {
     const message =
       (data && (data.errorMessage || data.message || data.error)) ||
       `Follow Up Boss API request failed (${res.status} ${res.statusText})`;
-    const err = new Error(`${message} [${method} ${path}]`);
+    // Defensive: some APIs in this family return an array of strings rather
+    // than one string for this field - normalize either shape into one
+    // readable line instead of letting Array.prototype.toString's bare
+    // comma-join leak into the error message.
+    const messageText = Array.isArray(message) ? message.join("; ") : message;
+    const err = new Error(`${messageText} [${method} ${path}]`);
     err.status = res.status;
     err.body = data;
     throw err;
