@@ -6,6 +6,7 @@ import { realGeeks } from "../realGeeksClient.js";
 import { postToSlack } from "../slackClient.js";
 import { sendEmail, fromAddress as emailFromAddress } from "../emailClient.js";
 import { buildCanSpamFooter, DO_NOT_EMAIL_TAG } from "../emailCompliance.js";
+import { buildSignature } from "../emailSignature.js";
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -629,13 +630,15 @@ export function registerFubTools(server) {
       title: "Send Email",
       description:
         "Send a real email to a lead via Gmail/Workspace SMTP, then log it in Follow Up Boss " +
-        "as an email campaign + delivered event. Every email automatically gets a CAN-SPAM " +
-        "footer appended (physical mailing address + unsubscribe link) - do not include your " +
-        "own address/opt-out text in the body, it would duplicate. Refuses to send to anyone " +
-        `tagged "${DO_NOT_EMAIL_TAG}" in FUB (set automatically when a recipient uses the ` +
-        "unsubscribe link). Requires GMAIL_USER, GMAIL_APP_PASSWORD, AGENT_MAILING_ADDRESS, " +
-        "PUBLIC_BASE_URL, and EMAIL_UNSUBSCRIBE_SECRET to be configured. This tool only sends " +
-        "when explicitly called - nothing in this repo triggers it autonomously.",
+        "as an email campaign + delivered event. Every email automatically gets your " +
+        "agent/brokerage signature (see AGENT_NAME etc. in .env.example - skipped if AGENT_NAME " +
+        "isn't set) and a CAN-SPAM footer appended (physical mailing address + unsubscribe " +
+        "link) - do not include your own sign-off or opt-out text in the body, it would " +
+        `duplicate. Refuses to send to anyone tagged "${DO_NOT_EMAIL_TAG}" in FUB (set ` +
+        "automatically when a recipient uses the unsubscribe link). Requires GMAIL_USER, " +
+        "GMAIL_APP_PASSWORD, AGENT_MAILING_ADDRESS, PUBLIC_BASE_URL, and " +
+        "EMAIL_UNSUBSCRIBE_SECRET to be configured. This tool only sends when explicitly " +
+        "called - nothing in this repo triggers it autonomously.",
       inputSchema: {
         personId: z.number().int().describe("The Follow Up Boss person id to email and log against."),
         subject: z.string().describe("Email subject line."),
@@ -671,9 +674,10 @@ export function registerFubTools(server) {
           );
         }
 
+        const signature = buildSignature();
         const footer = buildCanSpamFooter({ personId, email: to });
-        const finalHtml = `${bodyHtml}${footer.html}`;
-        const finalText = bodyText ? `${bodyText}${footer.text}` : undefined;
+        const finalHtml = `${bodyHtml}${signature?.html ?? ""}${footer.html}`;
+        const finalText = bodyText ? `${bodyText}${signature?.text ?? ""}${footer.text}` : undefined;
 
         const sent = await sendEmail({ to, subject, html: finalHtml, text: finalText });
 

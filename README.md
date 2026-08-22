@@ -147,6 +147,8 @@ Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a cl
 
 Once set, `send_email` refuses to send to anyone tagged `Do Not Email` in FUB - that tag gets set automatically the moment someone clicks their unsubscribe link, via the public `/unsubscribe` route. **This tool sends only when explicitly called - nothing in this repo triggers it autonomously.** See `skills/distressed-seller-outreach/SKILL.md` for why that skill specifically should keep routing through Slack for human review rather than calling `send_email` directly, even though the tool itself would technically allow it.
 
+**Signature** - every email also gets your agent/brokerage signature appended (above the CAN-SPAM footer), built from `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, and `AGENT_RANKING_TEXT` in `.env.example` - all optional, and skipped entirely if `AGENT_NAME` is unset. Fill these in directly rather than having Claude transcribe them from a screenshot of an existing signature - a license number or a ranking/award claim needs to be exact, not approximated (see `src/emailSignature.js`).
+
 ## Speed-to-lead (webhooks)
 
 `POST /webhooks/fub` receives Follow Up Boss webhook events and reacts within seconds - creating an urgent callback task and firing a Slack alert on every new lead, with an optional (off by default) automatic first-touch text. Full setup and a compliance note on the auto-text option are in `skills/speed-to-lead/SKILL.md`. Short version:
@@ -170,6 +172,7 @@ No separate webhook secret is needed - signatures are verified using your existi
    - `REALGEEKS_USERNAME`, `REALGEEKS_PASSWORD`, `REALGEEKS_SITE_UUID` (for `sync_lead_to_realgeeks`)
    - `SLACK_WEBHOOKS` (for `notify_slack`)
    - `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM_NAME`, `AGENT_MAILING_ADDRESS`, `PUBLIC_BASE_URL`, `EMAIL_UNSUBSCRIBE_SECRET` (for `send_email` - see "Email setup" above)
+   - `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, `AGENT_RANKING_TEXT` (optional - email signature, see "Email setup" above)
    - `SPEED_TO_LEAD_SLACK_CHANNEL`, `AUTO_FIRST_TOUCH_SMS`, `FIRST_TOUCH_SMS_TEMPLATE`, `AGENT_NAME` (for speed-to-lead - see below)
 5. Do not set `PORT` - Railway injects it automatically and `src/index.js` already reads `process.env.PORT`.
 6. Deploy. Railway will give you a public URL like `https://your-app.up.railway.app`. Your MCP endpoint is:
