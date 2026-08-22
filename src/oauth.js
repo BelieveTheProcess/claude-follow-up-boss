@@ -1,4 +1,6 @@
-import { randomUUID, createHash, timingSafeEqual } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { createRateLimiter } from "./rateLimit.js";
+import { timingSafeEqualStr } from "./authUtils.js";
 
 // OAuth surface for MCP clients (Claude's custom-connector flow, specifically)
 // that require a remote MCP server to speak OAuth - dynamic client
@@ -29,12 +31,14 @@ function verifyPkce(codeVerifier, codeChallenge) {
   return base64url(hash) === codeChallenge;
 }
 
-function timingSafeEqualStr(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
+// Login page and token exchange are unauthenticated by nature (that's the
+// point of /authorize and /token) - rate-limit them so guessing
+// OAUTH_PASSWORD or brute-forcing an auth code isn't free.
+const authRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many attempts, try again later.",
+});
 
 function primaryAuthToken() {
   const tokens = (process.env.MCP_AUTH_TOKENS || "").split(",").map((t) => t.trim()).filter(Boolean);
@@ -83,7 +87,7 @@ export function registerOAuthRoutes(app) {
     });
   });
 
-  app.get("/authorize", (req, res) => {
+  app.get("/authorize", authRateLimit, (req, res) => {
     const { client_id, redirect_uri, response_type, code_challenge, code_challenge_method } = req.query;
     const state = req.query.state || "";
     const client = clients.get(client_id);
@@ -115,7 +119,7 @@ export function registerOAuthRoutes(app) {
     res.set("Content-Type", "text/html").send(html);
   });
 
-  app.post("/authorize", (req, res) => {
+  app.post("/authorize", authRateLimit, (req, res) => {
     const { client_id, redirect_uri, code_challenge, state, password } = req.body || {};
     const client = clients.get(client_id);
     if (!client || !client.redirect_uris.includes(redirect_uri)) {
@@ -141,7 +145,7 @@ export function registerOAuthRoutes(app) {
     res.redirect(redirect.toString());
   });
 
-  app.post("/token", (req, res) => {
+  app.post("/token", authRateLimit, (req, res) => {
     const body = req.body || {};
     const token = primaryAuthToken();
     if (!token) {
