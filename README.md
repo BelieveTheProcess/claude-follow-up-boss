@@ -193,6 +193,7 @@ https://your-app.up.railway.app/mcp
 - `weekly-market-update` - a general market update plus localized versions per farm area.
 - `consultation-prep-sheet` - a one-page prep sheet from a lead's FUB history before a listing/buyer appointment.
 - `social-media-content-batch` - five related social posts from one topic/theme.
+- `distressed-seller-outreach` - cold text/email scripts for pre-foreclosure, financial distress, probate, divorce, and landlord-burnout leads. Leads with a compliance gate (TCPA consent, state foreclosure-consultant law, CAN-SPAM) before drafting anything - read that section before using it.
 
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
