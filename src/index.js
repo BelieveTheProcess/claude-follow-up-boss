@@ -8,6 +8,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerFubTools } from "./tools/index.js";
 import { registerFubWebhookRoute } from "./webhooks.js";
 import { registerOAuthRoutes } from "./oauth.js";
+import { registerUnsubscribeRoute } from "./unsubscribeRoute.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { timingSafeEqualStr } from "./authUtils.js";
 
@@ -68,6 +69,17 @@ const mcpRateLimit = createRateLimiter({
   max: 120,
   message: "Too many MCP requests, slow down.",
 });
+
+// Public (unauthenticated by nature - recipients aren't MCP clients),
+// rate-limited to make link-guessing/scanning impractical even though the
+// HMAC token in each link already makes forging one infeasible without
+// EMAIL_UNSUBSCRIBE_SECRET. See src/emailCompliance.js.
+const unsubscribeRateLimit = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: "Too many requests, try again later.",
+});
+registerUnsubscribeRoute(app, unsubscribeRateLimit);
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const SESSION_SWEEP_INTERVAL_MS = 5 * 60 * 1000;

@@ -1,8 +1,11 @@
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { fub } from "../fubClient.js";
 import { sendSms, fromNumber as twilioFromNumber } from "../twilioClient.js";
 import { realGeeks } from "../realGeeksClient.js";
 import { postToSlack } from "../slackClient.js";
+import { sendEmail, fromAddress as emailFromAddress } from "../emailClient.js";
+import { buildCanSpamFooter, DO_NOT_EMAIL_TAG } from "../emailCompliance.js";
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -612,6 +615,93 @@ export function registerFubTools(server) {
         return textResult({
           twilio: { sid: sms.sid, status: sms.status, to: sms.to, from: sms.from },
           fubLog: logged,
+        });
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // send_email - actually deliver an email via Gmail/Workspace SMTP, then log it in FUB
+  server.registerTool(
+    "send_email",
+    {
+      title: "Send Email",
+      description:
+        "Send a real email to a lead via Gmail/Workspace SMTP, then log it in Follow Up Boss " +
+        "as an email campaign + delivered event. Every email automatically gets a CAN-SPAM " +
+        "footer appended (physical mailing address + unsubscribe link) - do not include your " +
+        "own address/opt-out text in the body, it would duplicate. Refuses to send to anyone " +
+        `tagged "${DO_NOT_EMAIL_TAG}" in FUB (set automatically when a recipient uses the ` +
+        "unsubscribe link). Requires GMAIL_USER, GMAIL_APP_PASSWORD, AGENT_MAILING_ADDRESS, " +
+        "PUBLIC_BASE_URL, and EMAIL_UNSUBSCRIBE_SECRET to be configured. This tool only sends " +
+        "when explicitly called - nothing in this repo triggers it autonomously.",
+      inputSchema: {
+        personId: z.number().int().describe("The Follow Up Boss person id to email and log against."),
+        subject: z.string().describe("Email subject line."),
+        bodyHtml: z.string().describe("Email body as HTML. The CAN-SPAM footer is appended automatically."),
+        bodyText: z
+          .string()
+          .optional()
+          .describe("Plain-text fallback body. If omitted, a stripped-down version of bodyHtml's text is not generated - provide this for best deliverability."),
+        toEmail: z
+          .string()
+          .email()
+          .optional()
+          .describe("Email address to send to. If omitted, the person's primary email on file in Follow Up Boss is used."),
+      },
+    },
+    async ({ personId, subject, bodyHtml, bodyText, toEmail }) => {
+      try {
+        const person = await fub.get(`/people/${personId}`, { fields: "emails,tags" });
+
+        if ((person?.tags || []).includes(DO_NOT_EMAIL_TAG)) {
+          return errorResult(
+            new Error(`Person ${personId} is tagged "${DO_NOT_EMAIL_TAG}" - refusing to send.`)
+          );
+        }
+
+        const to =
+          toEmail ??
+          person?.emails?.find((e) => e.isPrimary)?.value ??
+          person?.emails?.[0]?.value;
+        if (!to) {
+          return errorResult(
+            new Error(`No toEmail provided and person ${personId} has no email address on file.`)
+          );
+        }
+
+        const footer = buildCanSpamFooter({ personId, email: to });
+        const finalHtml = `${bodyHtml}${footer.html}`;
+        const finalText = bodyText ? `${bodyText}${footer.text}` : undefined;
+
+        const sent = await sendEmail({ to, subject, html: finalHtml, text: finalText });
+
+        const fubLog = await (async () => {
+          const campaign = await fub.post("/emCampaigns", {
+            origin: "ClaudeMCP",
+            originId: sent.messageId || randomUUID(),
+            name: subject,
+            subject,
+            bodyHtml: finalHtml,
+          });
+          return fub.post("/emEvents", {
+            emEvents: [
+              {
+                type: "delivered",
+                occurred: new Date().toISOString(),
+                recipient: to,
+                personId,
+                campaignId: campaign.id,
+              },
+            ],
+          });
+        })().catch((e) => ({ error: `Sent via Gmail but failed to log in Follow Up Boss: ${e.message}` }));
+
+        return textResult({
+          email: { messageId: sent.messageId, to, from: emailFromAddress(), subject },
+          unsubscribeUrl: footer.unsubscribeUrl,
+          fubLog,
         });
       } catch (err) {
         return errorResult(err);

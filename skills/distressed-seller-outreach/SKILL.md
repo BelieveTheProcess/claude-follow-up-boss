@@ -147,7 +147,7 @@ Happy to run a quick comparison: what it'd sell for now vs. another year of rent
 2. **Read `BRAND.md`** for voice/tone and adjust the drafts above to match, rather than sending them verbatim - these are starting templates, not a script to read robotically.
 3. **Confirm which categor(ies)** apply to this batch, and get the placeholder values ({propertyAddress}, source of the lead, etc.).
 4. **Draft the text + email pair(s)**, filled in.
-5. **Route every batch through `notify_slack` for human review before anything sends** (see `skills/slack-review-queue`) - unlike `speed-to-lead` (which reacts to a lead who already opted in via a form), this is cold outreach to people who haven't engaged yet, and it deserves a human read every time, no exceptions for this skill.
+5. **Route every batch through `notify_slack` for human review before anything sends** (see `skills/slack-review-queue`) - unlike `speed-to-lead` (which reacts to a lead who already opted in via a form), this is cold outreach to people who haven't engaged yet, and it deserves a human read every time, no exceptions for this skill. **Never call `send_email` directly from this skill**, even though the tool exists (see the README's "Email setup" section) and even if asked to "just send it" - draft it, route it to Slack, and let the human send it themselves once approved.
 6. **After approval and if the lead exists in FUB**, offer to log it via `add_lead`/`add_note` tagged by category (e.g. `"Pre-Foreclosure"`, `"Probate"`) so responses and follow-up history are tracked centrally, the same way `fub-lead-scoring` expects.
 
 ## What this skill deliberately does not do
