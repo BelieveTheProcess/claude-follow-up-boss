@@ -8,10 +8,29 @@
 //   thing that must be typed in correctly by a human once, not guessed or
 //   transcribed from a screenshot/photo. Most state real estate advertising
 //   rules also require ranking/award claims to be accurate and current -
-//   this file has no way to verify that, so it only prints what you put in
-//   AGENT_RANKING_TEXT verbatim, and prints nothing if it's unset.
-// - If AGENT_NAME isn't set, buildSignature() returns null and send_email
-//   sends without a signature rather than a broken partial one.
+//   this file has no way to verify that, so it only prints what's actually
+//   provided, verbatim.
+// - If neither the business-card image nor AGENT_NAME is set, buildSignature()
+//   returns null and send_email sends without a signature rather than a
+//   broken partial one.
+//
+// assets/email-signature-card.png - if present, this exact image (the
+// agent's existing "digital business card" graphic, already laid out with
+// name/title/license/contact/brokerage logos/ranking badges) is embedded as
+// an inline (cid) attachment and used as the signature, instead of
+// rebuilding the same information as HTML text - a hand-built approximation
+// would drift from the real card and duplicate a design someone already
+// made. The individual AGENT_* fields below are the fallback for when no
+// card image is provided, and always populate the plain-text version (image
+// signatures don't render in text-only clients).
+
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CARD_PATH = path.join(__dirname, "..", "assets", "email-signature-card.png");
+const CARD_CID = "email-signature-card";
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({
@@ -21,7 +40,8 @@ function esc(value) {
 
 export function buildSignature() {
   const name = process.env.AGENT_NAME;
-  if (!name) return null;
+  const hasCard = existsSync(CARD_PATH);
+  if (!name && !hasCard) return null;
 
   const title = process.env.AGENT_TITLE;
   const license = process.env.AGENT_LICENSE;
@@ -47,6 +67,19 @@ export function buildSignature() {
     rankingText,
   ].filter(Boolean);
   const text = `\n\n${textLines.join("\n")}`;
+
+  if (hasCard) {
+    const img = `<img src="cid:${CARD_CID}" alt="${esc(name || brokerage || "Signature")}" width="650" style="max-width:100%;height:auto;display:block;">`;
+    const html = `
+<div style="margin-top:24px;">
+  ${bookingUrl ? `<a href="${esc(bookingUrl)}">${img}</a>` : img}
+</div>`;
+    return {
+      html,
+      text,
+      attachments: [{ filename: "email-signature-card.png", path: CARD_PATH, cid: CARD_CID }],
+    };
+  }
 
   const contactRows = [
     phone && `<div>&#9742; ${esc(phone)}</div>`,
@@ -75,5 +108,5 @@ export function buildSignature() {
   </td></tr>` : ""}
 </table>`;
 
-  return { html, text };
+  return { html, text, attachments: [] };
 }

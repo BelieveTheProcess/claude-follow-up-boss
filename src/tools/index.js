@@ -679,7 +679,13 @@ export function registerFubTools(server) {
         const finalHtml = `${bodyHtml}${signature?.html ?? ""}${footer.html}`;
         const finalText = bodyText ? `${bodyText}${signature?.text ?? ""}${footer.text}` : undefined;
 
-        const sent = await sendEmail({ to, subject, html: finalHtml, text: finalText });
+        const sent = await sendEmail({
+          to,
+          subject,
+          html: finalHtml,
+          text: finalText,
+          attachments: signature?.attachments,
+        });
 
         const fubLog = await (async () => {
           const campaign = await fub.post("/emCampaigns", {

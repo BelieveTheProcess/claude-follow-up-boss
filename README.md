@@ -147,7 +147,12 @@ Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a cl
 
 Once set, `send_email` refuses to send to anyone tagged `Do Not Email` in FUB - that tag gets set automatically the moment someone clicks their unsubscribe link, via the public `/unsubscribe` route. **This tool sends only when explicitly called - nothing in this repo triggers it autonomously.** See `skills/distressed-seller-outreach/SKILL.md` for why that skill specifically should keep routing through Slack for human review rather than calling `send_email` directly, even though the tool itself would technically allow it.
 
-**Signature** - every email also gets your agent/brokerage signature appended (above the CAN-SPAM footer), built from `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, and `AGENT_RANKING_TEXT` in `.env.example` - all optional, and skipped entirely if `AGENT_NAME` is unset. Fill these in directly rather than having Claude transcribe them from a screenshot of an existing signature - a license number or a ranking/award claim needs to be exact, not approximated (see `src/emailSignature.js`).
+**Signature** - every email also gets your agent/brokerage signature appended (above the CAN-SPAM footer), built one of two ways (see `src/emailSignature.js`):
+
+- **`assets/email-signature-card.png`**, if present - your existing "digital business card" graphic (name/title/license/contact/brokerage logos/ranking badges already laid out) is embedded as an inline image, exactly as designed, rather than approximated as HTML text. To use your own, just replace that file and redeploy - no env vars needed, and nothing else in the repo references the specific image.
+- Otherwise, a plain HTML block built from `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, and `AGENT_RANKING_TEXT` in `.env.example` - all optional, and skipped entirely (both the image and this fallback) if neither the card image nor `AGENT_NAME` is set.
+
+Either way, fill in exact values yourself rather than having Claude transcribe them from a screenshot - a license number or a ranking/award claim needs to be exact, not approximated.
 
 ## Speed-to-lead (webhooks)
 

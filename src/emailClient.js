@@ -47,14 +47,17 @@ export function fromAddress() {
 /**
  * Sends an email via Gmail/Workspace SMTP. Returns nodemailer's send result
  * (includes messageId). Does not add any compliance footer itself - callers
- * (see send_email in tools/index.js) are responsible for that.
+ * (see send_email in tools/index.js) are responsible for that. `attachments`
+ * is passed straight through to nodemailer (used for the inline cid-embedded
+ * signature image, if configured - see emailSignature.js).
  */
-export async function sendEmail({ to, subject, html, text }) {
+export async function sendEmail({ to, subject, html, text, attachments }) {
   return transport().sendMail({
     from: fromAddress(),
     to,
     subject,
     html,
     text,
+    ...(attachments?.length && { attachments }),
   });
 }
