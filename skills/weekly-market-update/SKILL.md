@@ -24,3 +24,5 @@ This repo has no email-sending tool - this skill produces the draft and (optiona
 6. **Route for review.** If `notify_slack` is configured, post each draft to the review channel (e.g. `marketing-review`) rather than assuming it's ready to send - flag it clearly as a draft awaiting approval.
 
 7. **Hand back plain drafts** (subject line + body) the user can paste into their email tool, clearly labeled by audience (General / <Farm Area Name>).
+
+8. **Offer a shareable one-pager, optionally.** If the user also wants a version to post/print (not just email), and Claude's built-in `pptx` skill is available in this session, offer to turn the general update (or one farm-area version) into a short slide/one-pager - a market snapshot graphic reads very differently on social than an email. This is a separate, optional step; the email drafts from step 7 are the primary deliverable.

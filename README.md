@@ -18,6 +18,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `tag_lead_priority` | Set/clear a `Priority: Hot/Warm/Cool` tag on a person - persists a scoring pass back into FUB. |
 | `add_note` | Attach a note to an existing person. |
 | `send_text` | Actually send an SMS via Twilio, then log it on the person's FUB timeline. |
+| `send_email` | Actually send an email via Gmail/Workspace SMTP, then log it in FUB. Auto-appends a CAN-SPAM footer and refuses to send to anyone who's unsubscribed. |
 | `list_action_plans` | List the follow-up sequences ("Action Plans") configured in FUB. |
 | `apply_action_plan` | Enroll a lead in an existing Action Plan by id. |
 | `sync_lead_to_realgeeks` | Push a FUB lead into a Real Geeks site so a search alert / IDX drip can be set up. |
@@ -41,6 +42,8 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 
 **Slack** - `notify_slack` posts to one of your Slack channels via an Incoming Webhook URL. `SLACK_WEBHOOKS` is a JSON object mapping a channel label you choose (e.g. `"marketing-review"`) to that channel's webhook URL - see `skills/slack-review-queue/SKILL.md` for setup.
 
+**Gmail/Workspace** - `send_email` authenticates over SMTP with `GMAIL_USER` / `GMAIL_APP_PASSWORD` (an App Password, not your account password - see "Email setup" below). Every send goes through `src/emailCompliance.js` first, which appends a CAN-SPAM-required footer (`AGENT_MAILING_ADDRESS` + a signed unsubscribe link built from `PUBLIC_BASE_URL` and `EMAIL_UNSUBSCRIBE_SECRET`) and checks the recipient isn't tagged `Do Not Email` in FUB. Clicking the unsubscribe link hits the public `/unsubscribe` route, which tags the person `Do Not Email` in FUB - `send_email` checks that tag before every send, so an unsubscribe is enforced automatically, not just recorded.
+
 All secrets are read from environment variables at request time. They are never hardcoded or logged, and `.env` is git-ignored - only `.env.example` (with blank values) is committed.
 
 **Connecting client (Claude, etc.)** - the real credential is a static bearer token via `MCP_AUTH_TOKENS` (comma-separated list of accepted tokens), required for any deployment reachable over the internet; leave it blank only for local-only development. On top of that, `src/oauth.js` implements an OAuth shell (dynamic client registration + PKCE via `/register`, `/authorize`, `/token`) purely because Claude's custom-connector UI requires a remote MCP server to complete an OAuth handshake to connect at all - it has no plain "paste a token" field. Client registrations and authorization codes from that flow are short-lived and kept in memory (fine, they're only used for a few minutes during the interactive login), but `/token` does **not** generate and store a fresh random access token - it hands back the server's own `MCP_AUTH_TOKENS` value directly. So the token obtained through the OAuth login is the same static secret either way, and stays valid across restarts/redeploys - unlike an earlier version of this file that generated and stored real tokens in memory and silently logged out every connected client on every redeploy. `OAUTH_PASSWORD` gates the login page itself (the human-interactive step); set it alongside `MCP_AUTH_TOKENS`.
@@ -54,8 +57,11 @@ src/
   twilioClient.js       Thin wrapper around the Twilio SDK for sending SMS
   realGeeksClient.js     Thin fetch wrapper: adds Real Geeks Basic Auth
   slackClient.js          Thin wrapper around Slack Incoming Webhooks
-  webhooks.js               FUB webhook receiver: signature verification + speed-to-lead reaction
-  tools/index.js              The MCP tool definitions, calling the clients above
+  emailClient.js            Thin wrapper around Gmail/Workspace SMTP (nodemailer)
+  emailCompliance.js         CAN-SPAM footer + signed unsubscribe link/token, shared by send_email and the /unsubscribe route
+  unsubscribeRoute.js          Public /unsubscribe route: verifies the token, tags the person "Do Not Email" in FUB
+  webhooks.js                   FUB webhook receiver: signature verification + speed-to-lead reaction
+  tools/index.js                  The MCP tool definitions, calling the clients above
 .env.example
 package.json
 BRAND.md               Fillable brand/voice doc the content skills read before drafting
@@ -129,6 +135,25 @@ Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a cl
 
 `notify_slack` posts through Slack Incoming Webhooks, not a full Slack app - see `skills/slack-review-queue/SKILL.md` for step-by-step setup and for what this integration deliberately does not do (no reading replies, no bot mentions, no automated metrics gathering).
 
+## Email setup
+
+`send_email` sends through Gmail/Google Workspace SMTP, not a marketing ESP - it's built for individual, agent-driven email (follow-ups, one-off outreach), not bulk sending. Gmail/Workspace enforce their own daily caps (~500/day on consumer Gmail, ~2000/day on Workspace).
+
+1. On the sending Google account, enable 2-Step Verification if it isn't already (required for App Passwords).
+2. Generate an App Password at https://myaccount.google.com/apppasswords - a 16-character code, distinct from the account password. Workspace admins may need to explicitly allow App Passwords org-wide first (Admin Console -> Security -> Authentication -> 2-step verification).
+3. Set `GMAIL_USER` (the sending address) and `GMAIL_APP_PASSWORD` (the App Password, not the account password).
+4. Set `AGENT_MAILING_ADDRESS` to a real physical postal address - CAN-SPAM requires one on every commercial email, and `send_email` appends it automatically to every message's footer.
+5. Set `PUBLIC_BASE_URL` to this server's public URL (e.g. `https://your-app.up.railway.app`, no trailing slash) and `EMAIL_UNSUBSCRIBE_SECRET` to a random secret (same generation command as `MCP_AUTH_TOKENS`) - these build the signed unsubscribe link in every footer.
+
+Once set, `send_email` refuses to send to anyone tagged `Do Not Email` in FUB - that tag gets set automatically the moment someone clicks their unsubscribe link, via the public `/unsubscribe` route. **This tool sends only when explicitly called - nothing in this repo triggers it autonomously.** See `skills/distressed-seller-outreach/SKILL.md` for why that skill specifically should keep routing through Slack for human review rather than calling `send_email` directly, even though the tool itself would technically allow it.
+
+**Signature** - every email also gets your agent/brokerage signature appended (above the CAN-SPAM footer), built one of two ways (see `src/emailSignature.js`):
+
+- **`assets/email-signature-card.png`**, if present - your existing "digital business card" graphic (name/title/license/contact/brokerage logos/ranking badges already laid out) is embedded as an inline image, exactly as designed, rather than approximated as HTML text. To use your own, just replace that file and redeploy - no env vars needed, and nothing else in the repo references the specific image.
+- Otherwise, a plain HTML block built from `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, and `AGENT_RANKING_TEXT` in `.env.example` - all optional, and skipped entirely (both the image and this fallback) if neither the card image nor `AGENT_NAME` is set.
+
+Either way, fill in exact values yourself rather than having Claude transcribe them from a screenshot - a license number or a ranking/award claim needs to be exact, not approximated.
+
 ## Speed-to-lead (webhooks)
 
 `POST /webhooks/fub` receives Follow Up Boss webhook events and reacts within seconds - creating an urgent callback task and firing a Slack alert on every new lead, with an optional (off by default) automatic first-touch text. Full setup and a compliance note on the auto-text option are in `skills/speed-to-lead/SKILL.md`. Short version:
@@ -151,6 +176,8 @@ No separate webhook secret is needed - signatures are verified using your existi
    - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (for `send_text`)
    - `REALGEEKS_USERNAME`, `REALGEEKS_PASSWORD`, `REALGEEKS_SITE_UUID` (for `sync_lead_to_realgeeks`)
    - `SLACK_WEBHOOKS` (for `notify_slack`)
+   - `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM_NAME`, `AGENT_MAILING_ADDRESS`, `PUBLIC_BASE_URL`, `EMAIL_UNSUBSCRIBE_SECRET` (for `send_email` - see "Email setup" above)
+   - `AGENT_NAME`, `AGENT_TITLE`, `AGENT_LICENSE`, `BROKERAGE_NAME`, `AGENT_PHONE`, `AGENT_MOBILE`, `AGENT_WEBSITE`, `AGENT_BOOKING_URL`, `AGENT_HEADSHOT_URL`, `BROKERAGE_LOGO_URL`, `AGENT_RANKING_TEXT` (optional - email signature, see "Email setup" above)
    - `SPEED_TO_LEAD_SLACK_CHANNEL`, `AUTO_FIRST_TOUCH_SMS`, `FIRST_TOUCH_SMS_TEMPLATE`, `AGENT_NAME` (for speed-to-lead - see below)
 5. Do not set `PORT` - Railway injects it automatically and `src/index.js` already reads `process.env.PORT`.
 6. Deploy. Railway will give you a public URL like `https://your-app.up.railway.app`. Your MCP endpoint is:
@@ -167,7 +194,7 @@ https://your-app.up.railway.app/mcp
 - `stage` on `add_lead`/`update_lead`/`create_lead_event` is free text matched against this account's actual pipeline stages - an unrecognized value silently falls back to a default stage instead of erroring (confirmed in practice: `"Attempting to Contact - Buyer"` silently became `"Lead"` when it didn't match a configured stage name). Call `list_pipeline_stages` first if the exact stage matters.
 - FUB's `/textMessages` endpoint only records a log entry - it cannot deliver anything. `send_text` sends the real message through Twilio first, then logs it so it still shows up correctly on the FUB timeline.
 - The FUB API can list Action Plans and enroll/pause people on them, but it cannot create or edit a plan's steps/content - new or edited sequences (subject lines, email bodies, wait times) still have to be built in the FUB UI under Automations. See `skills/fub-sequence-writer/SKILL.md` for how this repo works around that.
-- There is no email-sending tool in this repo. `weekly-market-update` and similar skills produce drafts (optionally routed through `notify_slack` for review) that you still send through your own email tool/ESP.
+- `send_email` (Gmail/Workspace SMTP) exists, but content-drafting skills like `weekly-market-update` still default to producing drafts (optionally routed through `notify_slack` for review) rather than calling `send_email` directly - ask explicitly if you want a skill to send straight through instead of drafting for review. `distressed-seller-outreach` is the one skill that should never skip the review step, regardless.
 - `skills/youtube-clip-agent/SKILL.md` is a setup/design guide, not a working integration - it depends on Higsfield and YouTube Analytics API credentials that aren't configured here. Read it before assuming clipping is automated.
 - `/webhooks/fub` only handles `peopleCreated` today. FUB supports many more event types (stage changes, calls, texts, etc.) - extending `src/webhooks.js` to react to those is straightforward but deliberately not done until asked for, since each new automatic reaction is another thing that fires without a human in the loop.
 - `AUTO_FIRST_TOUCH_SMS` is off by default on purpose - see the compliance note in `skills/speed-to-lead/SKILL.md` before turning it on.
@@ -193,7 +220,13 @@ https://your-app.up.railway.app/mcp
 - `weekly-market-update` - a general market update plus localized versions per farm area.
 - `consultation-prep-sheet` - a one-page prep sheet from a lead's FUB history before a listing/buyer appointment.
 - `social-media-content-batch` - five related social posts from one topic/theme.
+- `distressed-seller-outreach` - cold text/email scripts for pre-foreclosure, financial distress, probate, divorce, and landlord-burnout leads. Leads with a compliance gate (TCPA consent, state foreclosure-consultant law, CAN-SPAM) before drafting anything - read that section before using it.
 
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
 - `youtube-clip-agent` - a setup/design guide for a video-repurposing pipeline; **not wired up** (see Notes & gotchas).
+
+**Meta:**
+- `skill-creator` - Anthropic's own skill for drafting, testing, and evaluating *other* skills. Vendored unmodified (Apache 2.0 - see `skills/skill-creator/VENDORED_FROM.md`) from [anthropics/skills](https://github.com/anthropics/skills). Use it when extending this repo's own skill set, not as a client-facing workflow.
+
+**Pairing with Anthropic's `pptx` skill:** `weekly-market-update` and `consultation-prep-sheet` can hand off to Claude's built-in `pptx` skill (when your Claude client has it enabled) to turn their draft text into an actual one-pager/deck file instead of copy-paste text. That skill is not bundled in this repo - its license (source-available, not open source) doesn't permit redistributing or vendoring it, so it's referenced by name only; Claude Code and claude.ai already ship it, no separate install needed.
