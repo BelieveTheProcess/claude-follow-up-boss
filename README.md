@@ -154,6 +154,10 @@ Once set, `send_email` refuses to send to anyone tagged `Do Not Email` in FUB - 
 
 Either way, fill in exact values yourself rather than having Claude transcribe them from a screenshot - a license number or a ranking/award claim needs to be exact, not approximated.
 
+## Title Toolbox
+
+There is no live integration with Title Toolbox (Benutech's property/farming data platform, white-labeled per title company - e.g. `ctsantaclaratitletoolbox.com`) in this repo. Their [SDK](https://github.com/benutech-inc/ttb-sdk) is a browser-embedded JavaScript library requiring a Benutech-issued partner key, not a server-side REST API this Node backend can call directly - getting one requires contacting Benutech (`support@benutech.com`) and would still likely mean a separate browser-facing widget, not a `src/*.js` client like the others in this repo. Until/unless that changes, `skills/titletoolbox-import/SKILL.md` covers the practical path: export a farm/property list from the dashboard (CSV, Excel, or PDF Property Profile) and have Claude import it into FUB directly.
+
 ## Speed-to-lead (webhooks)
 
 `POST /webhooks/fub` receives Follow Up Boss webhook events and reacts within seconds - creating an urgent callback task and firing a Slack alert on every new lead, with an optional (off by default) automatic first-touch text. Full setup and a compliance note on the auto-text option are in `skills/speed-to-lead/SKILL.md`. Short version:
@@ -225,6 +229,7 @@ https://your-app.up.railway.app/mcp
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
 - `youtube-clip-agent` - a setup/design guide for a video-repurposing pipeline; **not wired up** (see Notes & gotchas).
+- `titletoolbox-import` - turn a Title Toolbox farm/property list export (CSV, Excel, or PDF Property Profile) into FUB records, since there's no live API integration (see "Title Toolbox" below). Importing isn't consent to contact - read its compliance note before pairing it with `distressed-seller-outreach`.
 
 **Meta:**
 - `skill-creator` - Anthropic's own skill for drafting, testing, and evaluating *other* skills. Vendored unmodified (Apache 2.0 - see `skills/skill-creator/VENDORED_FROM.md`) from [anthropics/skills](https://github.com/anthropics/skills). Use it when extending this repo's own skill set, not as a client-facing workflow.
