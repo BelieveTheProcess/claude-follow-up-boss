@@ -197,3 +197,8 @@ https://your-app.up.railway.app/mcp
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
 - `youtube-clip-agent` - a setup/design guide for a video-repurposing pipeline; **not wired up** (see Notes & gotchas).
+
+**Meta:**
+- `skill-creator` - Anthropic's own skill for drafting, testing, and evaluating *other* skills. Vendored unmodified (Apache 2.0 - see `skills/skill-creator/VENDORED_FROM.md`) from [anthropics/skills](https://github.com/anthropics/skills). Use it when extending this repo's own skill set, not as a client-facing workflow.
+
+**Pairing with Anthropic's `pptx` skill:** `weekly-market-update` and `consultation-prep-sheet` can hand off to Claude's built-in `pptx` skill (when your Claude client has it enabled) to turn their draft text into an actual one-pager/deck file instead of copy-paste text. That skill is not bundled in this repo - its license (source-available, not open source) doesn't permit redistributing or vendoring it, so it's referenced by name only; Claude Code and claude.ai already ship it, no separate install needed.

@@ -31,3 +31,7 @@ Turn a lead's full FUB history into a one-page prep sheet before a listing appoi
 5. **Offer to log the appointment.** After the meeting, offer to capture outcomes back into FUB via `add_note` so the next prep sheet (or `fub-lead-scoring` run) has it.
 
 Keep the whole sheet skimmable in under a minute - this is meant to be read in the car before walking in, not studied.
+
+## Optional: a printable version
+
+The prep sheet above is plain text by design - fast to generate, easy to skim on a phone. If the user wants something to print or hand to a team member instead, and Claude's built-in `pptx` skill is available in this session, offer to lay the same content out as a one-page printable sheet. Don't default to this - only do it if asked, since most agents just want the fast text version before walking in.
