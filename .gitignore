@@ -6,3 +6,6 @@ npm-debug.log*
 .DS_Store
 dist/
 *.log
+__pycache__/
+*.pyc
+.venv/
