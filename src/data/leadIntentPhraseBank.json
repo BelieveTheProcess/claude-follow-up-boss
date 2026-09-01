@@ -1,0 +1,109 @@
+{
+  "_notes": "Phrase bank for hot lead detection. Match case-insensitively, allow partial/fuzzy match on phrases marked with *. weight = contribution to hot-score. category = routing label.",
+
+  "buyer_intent": {
+    "category": "buyer",
+    "weight": "medium",
+    "phrases": [
+      "want to buy", "looking to buy", "looking to purchase",
+      "still in the market", "still looking for a home",
+      "in the market for a home", "shopping for a home",
+      "pre-approved", "pre approved", "getting pre-qualified",
+      "when can we see the property", "can we schedule a showing",
+      "is this still available", "interested in touring",
+      "looking to relocate", "need to find a place",
+      "first time buyer", "first-time home buyer"
+    ]
+  },
+
+  "seller_intent_soft": {
+    "category": "seller",
+    "urgency": "soft",
+    "weight": "medium",
+    "phrases": [
+      "exploring selling options", "exploring my options",
+      "thinking about selling", "considering selling",
+      "might sell", "may sell", "weighing my options",
+      "curious what my house is worth", "wondering what it's worth",
+      "what would you offer", "what's my home worth",
+      "not sure if i want to sell yet", "just gathering information",
+      "still deciding", "haven't decided", "open to hearing more",
+      "tell me more about my options"
+    ]
+  },
+
+  "seller_intent_urgent": {
+    "category": "seller",
+    "urgency": "high",
+    "weight": "high",
+    "phrases": [
+      "need to sell", "need to sell fast", "need to sell quickly",
+      "have to sell", "must sell", "want to sell fast",
+      "want an offer", "send me an offer", "ready to sell",
+      "want to sell asap", "sell as-is", "sell as is",
+      "can you buy it", "cash offer", "how fast can you close",
+      "what's the fastest you can close", "need this done quickly",
+      "behind on payments", "falling behind", "can't keep up with payments",
+      "losing the house", "about to lose the house"
+    ]
+  },
+
+  "investor_intent": {
+    "category": "investor",
+    "weight": "medium",
+    "phrases": [
+      "looking to add to my portfolio", "actively buying",
+      "send me deals", "add me to your buyers list",
+      "what's your inventory", "looking for off-market deals",
+      "cash buyer", "i buy properties", "interested in wholesale deals"
+    ]
+  },
+
+  "situational_context": {
+    "_notes": "these don't trigger hot-score alone but boost category-specific routing confidence when combined with seller_intent phrases",
+    "pre_foreclosure": [
+      "notice of default", "behind on my mortgage", "foreclosure notice",
+      "bank is threatening", "auction date", "trustee sale"
+    ],
+    "probate": [
+      "inherited the house", "my parent passed", "estate sale",
+      "going through probate", "executor of the estate", "the estate"
+    ],
+    "divorce": [
+      "going through a divorce", "getting divorced", "splitting assets",
+      "need to sell before the divorce is final"
+    ],
+    "inherited": [
+      "inherited this property", "left to me", "family property",
+      "don't want to keep the house"
+    ],
+    "affidavit_of_death": [
+      "passed away", "the owner passed", "died and left the property"
+    ],
+    "distressed_general": [
+      "needs a lot of work", "can't afford repairs", "code violation",
+      "tenant problems", "tired landlord", "vacant property"
+    ]
+  },
+
+  "disqualify_immediately": {
+    "_notes": "these should suppress hot-score and can trigger automatic sequence removal / suppression list, not just neutral scoring",
+    "phrases": [
+      "not interested", "stop texting me", "stop emailing me",
+      "remove me", "take me off your list", "unsubscribe",
+      "do not contact", "already sold", "already listed with another agent",
+      "wrong number", "please stop", "how did you get my number",
+      "how did you get my email"
+    ]
+  },
+
+  "scoring_notes": {
+    "reply_speed_under_1hr": "high",
+    "reply_speed_1_to_24hr": "medium",
+    "reply_speed_over_24hr": "low",
+    "seller_intent_urgent_match": "high, stacks with situational_context match",
+    "seller_intent_soft_match": "medium",
+    "buyer_intent_match": "medium, routes to buyer playbook not seller playbook",
+    "disqualify_match": "overrides all other scoring, suppresses lead"
+  }
+}
