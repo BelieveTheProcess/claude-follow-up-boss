@@ -7,6 +7,11 @@ import { postToSlack } from "../slackClient.js";
 import { sendEmail, fromAddress as emailFromAddress } from "../emailClient.js";
 import { buildCanSpamFooter, DO_NOT_EMAIL_TAG } from "../emailCompliance.js";
 import { buildSignature } from "../emailSignature.js";
+import { scoreText, scoreCommunications } from "../hotLeadScoring.js";
+
+function stripHtml(html) {
+  return typeof html === "string" ? html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : html;
+}
 
 function textResult(value) {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -530,6 +535,101 @@ export function registerFubTools(server) {
 
         const data = await fub.put(`/people/${personId}`, { tags: newTags }, { mergeTags: "false" });
         return textResult(data);
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  // score_lead_intent - deterministic phrase-bank scoring (Believe The Process hot-lead engine)
+  server.registerTool(
+    "score_lead_intent",
+    {
+      title: "Score Lead Intent",
+      description:
+        "Score inbound lead communication against the Believe The Process lead-intent phrase " +
+        "bank - buyer intent, soft/urgent seller intent, investor intent, situational context " +
+        "(pre-foreclosure, probate, divorce, inherited, affidavit of death, distressed), and " +
+        "disqualify phrases. This is deterministic phrase matching, not judgment - it's a " +
+        "different, code-based signal than skills/fub-lead-scoring's reading-comprehension " +
+        "approach; use both together, don't treat this as a replacement. Pass `text` to score " +
+        "one message directly, or `personId` to pull that person's recent Follow Up Boss notes " +
+        "plus inbound texts/emails and score each one with an aggregate rollup. A disqualify " +
+        "match (e.g. 'stop texting me', 'not interested') overrides all other scoring and " +
+        "suppresses the lead - hotScore is forced to 0. Matched phrases are always returned for " +
+        "scoring transparency, same as the phrase bank's own notes intend.",
+      inputSchema: {
+        text: z.string().optional().describe("Raw message text to score directly."),
+        personId: z
+          .number()
+          .int()
+          .optional()
+          .describe(
+            "Follow Up Boss person id - scores their recent notes, inbound texts, and inbound " +
+              "emails instead of a single text. Provide this or `text`, not both."
+          ),
+        activityLimitPerType: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .default(10)
+          .describe("Max recent notes/texts/emails to pull per type when scoring by personId."),
+        replySpeedHours: z
+          .number()
+          .optional()
+          .describe(
+            "Hours since the lead's previous outbound touch - adds a reply-speed factor to the " +
+              "score (under 1hr = high, 1-24hr = medium, over 24hr = low). Only used with `text`."
+          ),
+      },
+    },
+    async ({ text, personId, activityLimitPerType, replySpeedHours }) => {
+      if (!text && !personId) {
+        return errorResult(new Error("Provide either `text` or `personId`."));
+      }
+      try {
+        if (text) {
+          return textResult(scoreText(text, { replySpeedHours }));
+        }
+
+        const [notes, texts, emails] = await Promise.all([
+          fub
+            .get("/notes", { personId, limit: activityLimitPerType, sort: "-created" })
+            .catch(() => ({ notes: [] })),
+          fub
+            .get("/textMessages", { personId, limit: activityLimitPerType, sort: "-created" })
+            .catch(() => ({ textMessages: [] })),
+          fub
+            .get("/emails", { personId, limit: activityLimitPerType, sort: "-created" })
+            .catch(() => ({ emails: [] })),
+        ]);
+
+        const items = [
+          ...(notes.notes || []).map((n) => ({
+            channel: "fub_note",
+            direction: "unknown",
+            sentAt: n.created,
+            body: n.body || "",
+          })),
+          ...(texts.textMessages || [])
+            .filter((t) => t.isIncoming)
+            .map((t) => ({ channel: "fub_text", direction: "inbound", sentAt: t.created, body: t.message || "" })),
+          ...(emails.emails || [])
+            .filter((e) => e.isIncoming)
+            .map((e) => ({
+              channel: "fub_email",
+              direction: "inbound",
+              sentAt: e.created,
+              body: [e.subject, e.bodyText || e.textBody || stripHtml(e.bodyHtml || e.htmlBody || e.body)]
+                .filter(Boolean)
+                .join("\n"),
+            })),
+        ];
+
+        const result = scoreCommunications(items);
+        return textResult({ personId, ...result });
       } catch (err) {
         return errorResult(err);
       }

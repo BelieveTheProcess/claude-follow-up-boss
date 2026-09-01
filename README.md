@@ -16,6 +16,7 @@ A remote Model Context Protocol server, built with `@modelcontextprotocol/sdk` a
 | `list_custom_fields` | List this account's configured custom fields (label, API name, type). |
 | `get_priority_leads` | One-call pipeline scan with each lead's recent notes/calls/texts/emails attached, instead of list_leads + N×get_lead. |
 | `tag_lead_priority` | Set/clear a `Priority: Hot/Warm/Cool` tag on a person - persists a scoring pass back into FUB. |
+| `score_lead_intent` | Deterministic phrase-bank scoring (buyer/seller/investor intent, situational context, disqualify phrases) - score raw text or a person's recent FUB activity. |
 | `add_note` | Attach a note to an existing person. |
 | `send_text` | Actually send an SMS via Twilio, then log it on the person's FUB timeline. |
 | `send_email` | Actually send an email via Gmail/Workspace SMTP, then log it in FUB. Auto-appends a CAN-SPAM footer and refuses to send to anyone who's unsubscribed. |
@@ -61,6 +62,8 @@ src/
   emailCompliance.js         CAN-SPAM footer + signed unsubscribe link/token, shared by send_email and the /unsubscribe route
   unsubscribeRoute.js          Public /unsubscribe route: verifies the token, tags the person "Do Not Email" in FUB
   webhooks.js                   FUB webhook receiver: signature verification + speed-to-lead reaction
+  hotLeadScoring.js              Phrase-bank scoring engine (score_lead_intent's logic, unit-testable on its own)
+  data/leadIntentPhraseBank.json   The buyer/seller/investor/disqualify phrase bank scoreText() matches against
   tools/index.js                  The MCP tool definitions, calling the clients above
 .env.example
 package.json
@@ -130,6 +133,10 @@ Unlike the FUB API key, Real Geeks credentials aren't self-service:
 3. Real Geeks emails you the `Site UUID` for that site - this is `REALGEEKS_SITE_UUID`.
 
 Until those three env vars are set, `sync_lead_to_realgeeks` will fail with a clear "missing environment variable" error rather than a confusing API error.
+
+## Hot-lead scoring
+
+`score_lead_intent` and its underlying `src/hotLeadScoring.js` module implement deterministic phrase-bank scoring, separate from `skills/fub-lead-scoring`'s reading-comprehension approach - use both, don't treat one as a replacement for the other. The phrase bank lives at `src/data/leadIntentPhraseBank.json` (buyer intent, soft/urgent seller intent, investor intent, situational context like pre-foreclosure/probate/divorce, and disqualify phrases). A disqualify-phrase match (e.g. "stop texting me") forces the score to 0 and overrides every other match, matching the phrase bank's own scoring notes. No env vars or setup required - it's pure text matching, no external service. See `skills/hot-lead-detection/SKILL.md`.
 
 ## Slack setup
 
