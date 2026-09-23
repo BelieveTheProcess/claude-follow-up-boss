@@ -1,62 +1,51 @@
-<form class="offer-form" id="offer" novalidate data-offer-form>
-  <div class="form-head">
-    <p class="form-kicker">Free &middot; No obligation</p>
-    <h2 class="form-title">{{heading|Get your cash offer}}</h2>
-    <p class="form-sub">{{sub|Tell us about the property. WeWe&rsquo;ll call you back, usually the same day.rsquo;ll get right back to you.}}</p>
-  </div>
-  <div class="form-step" data-step="1">
-    <label for="f-address">Property address</label>
-    <input id="f-address" name="address" type="text" autocomplete="street-address" placeholder="Street, city, ZIP" required>
-    <button class="btn btn-gold btn-block" type="button" data-next>Get My Cash Offer &rarr;</button>
-  </div>
-  <div class="form-step" data-step="2">
-    <div class="field-row">
-      <div>
-        <label for="f-name">Your name</label>
-        <input id="f-name" name="name" type="text" autocomplete="name" required>
+<form class="offer" id="offer" novalidate data-offer-form>
+      <h2>{{heading|Get your cash offer}}</h2>
+      <p>{{sub|Takes about 60 seconds. We reply the same day.}}</p>
+      <div class="field">
+        <label for="address">Property address</label>
+        <input id="address" name="address" autocomplete="street-address" placeholder="{{placeholder|123 Main St, San Jose, CA}}" required>
       </div>
-      <div>
-        <label for="f-phone">Phone</label>
-        <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required>
+      <div class="two">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+        </div>
       </div>
-    </div>
-    <label for="f-email">Email</label>
-    <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required>
-    <div class="field-row">
-      <div>
-        <label for="f-timeline">When do you want to sell?</label>
-        <select id="f-timeline" name="timeline" required>
-          <option value="">Choose one</option>
-          <option>As soon as possible</option>
-          <option>Within 30 days</option>
-          <option>1 to 3 months</option>
-          <option>3+ months</option>
-          <option>Just exploring options</option>
-        </select>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email">
       </div>
-      <div>
-        <label for="f-situation">Your situation</label>
-        <select id="f-situation" name="situation" required>
-          <option value="">Choose one</option>
-          <option>Inherited / probate</option>
-          <option>Behind on payments / foreclosure</option>
-          <option>House needs repairs</option>
-          <option>Divorce</option>
-          <option>Tired landlord / tenant issues</option>
-          <option>Relocating / downsizing</option>
-          <option>Vacant property</option>
-          <option>Something else</option>
-        </select>
+      <div class="two">
+        <div class="field">
+          <label for="timeline">When do you want to sell?</label>
+          <select id="timeline" name="timeline">
+            <option>As soon as possible</option>
+            <option>Within 30 days</option>
+            <option>1 to 3 months</option>
+            <option>3+ months</option>
+            <option>Just exploring</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="situation">Situation</label>
+          <select id="situation" name="situation">
+            <option>Needs repairs</option>
+            <option>Inherited or probate</option>
+            <option>Behind on payments</option>
+            <option>Divorce</option>
+            <option>Tired landlord</option>
+            <option>Relocating</option>
+            <option>Vacant property</option>
+            <option>Other</option>
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="hp" aria-hidden="true"><label for="f-company">Company</label><input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off"></div>
-    <label class="consent">
-      <input type="checkbox" name="sms_consent" value="yes">
-      <span>Yes, Believe The Process Ventures LLC may call and text me at the number above about my property, including with automated technology. Consent is not required to get an offer. Msg &amp; data rates may apply; message frequency varies. Reply STOP to opt out, HELP for help.</span>
-    </label>
-    <button class="btn btn-gold btn-block" type="submit">Send &amp; Get My Offer</button>
-    <p class="form-fine">By submitting, you agree to our <a href="/terms-of-service/">Terms</a> and <a href="/privacy-policy/">Privacy Policy</a>. We never sell your information.</p>
-  </div>
-  <div class="form-status" role="status" aria-live="polite" hidden></div>
-  <p class="form-or">Prefer to talk? <a href="tel:+14157700722">Call (415) 770-0722</a></p>
-</form>
+      <div class="hp" aria-hidden="true"><label for="company">Company</label><input id="company" name="company" tabindex="-1" autocomplete="off"></div>
+      <button class="btn btn-gold" type="submit">Get my cash offer</button>
+      <div class="form-msg" id="form-msg" role="status" aria-live="polite"></div>
+      <p class="fine" data-consent>By submitting, you agree to be contacted by Believe The Process Ventures by call, text, or email about your property. Message and data rates may apply. Reply STOP to opt out. See our <a href="/privacy-policy/">Privacy Policy</a>.</p>
+    </form>

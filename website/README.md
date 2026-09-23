@@ -2,20 +2,23 @@
 
 This is the cash home-buyer website for Believe The Process Ventures LLC. It's plain HTML, CSS and JS with no framework. A small build script (`build.mjs`, no dependencies) adds the shared header, footer, offer form and SEO tags to every page.
 
+The design comes from `design/believetheprocess-home.html`, which is saved here unchanged. The first part of `public/assets/css/site.css` is that file's CSS, copied as-is. Styles added for the other pages are at the bottom, marked "Additions", and use the same colors and fonts.
+
 ```
 website/
   build.mjs                 builds src/ + public/ into dist/ (this is what Netlify runs)
   src/partials/             shared pieces used on every page
     layout.html             <head>, SEO tags, schema, page shell
-    header.html  footer.html  sticky-bar.html
+    header.html  footer.html
     offer-form.html         the one reusable offer form
-    trust-strip.html  rooflines.html
+    trust-strip.html  roofline.html  check.html
   src/pages/                one folder per page = one clean URL
     index.html                              ->  /
     sell-my-house-fast-san-jose/index.html  ->  /sell-my-house-fast-san-jose/
     404.html
   public/                   copied as-is: CSS, JS, images, robots.txt
     assets/js/site.js       FORM_ENDPOINT setting is at the very top
+  design/                   your original homepage file (reference only, not published)
 ../netlify.toml             Netlify build settings (at the repo root)
 ```
 
@@ -52,7 +55,7 @@ Status: **built** = ready for review in this round. Everything else is planned f
 | How It Works | `/how-it-works/` | next |
 | About | `/about/` | next |
 | FAQ | `/faq/` | next |
-| Contact / Get Your Offer | `/get-your-offer/` | next |
+| Contact / Get Your Offer | `/contact-us/` (same URL as your current site) | next |
 | Privacy Policy | `/privacy-policy/` | next |
 | Terms of Service | `/terms-of-service/` | next |
 
@@ -62,9 +65,9 @@ Each page gets its own title and meta description (set in its front matter), a c
 
 ## Before launch: things only you can fill in
 
-- **Reviews:** the homepage has 3 clearly marked placeholder review cards (look for `PLACEHOLDER REVIEWS` in `src/pages/index.html`). Replace them with real reviews used with the seller's permission, or delete the section. Don't launch with the placeholders showing.
+- **Reviews:** the homepage has 3 placeholder review cards (look for `REPLACE` in `src/pages/index.html`). Replace them with real reviews used with the seller's permission, or delete the section. The placeholders show no stars, so no rating appears until it's real. Don't launch with the placeholders showing.
+- **Social links:** the Facebook and LinkedIn links in `src/partials/footer.html` point to the sites' home pages. Swap in your business page URLs, or remove them.
 - **Your story and photo** go on the About page (next round).
-- **Texting:** the site says "Call (415) 770-0722". If that number can receive texts, tell me and I'll change it to "Call or text".
 
 ## Connecting the form to Follow Up Boss (Zapier)
 
@@ -75,9 +78,9 @@ Until you do this, submitting the form shows visitors a "please call (415) 770-0
    `const FORM_ENDPOINT = "https://hooks.zapier.com/hooks/catch/.../.../";`
    Commit and push. Netlify redeploys automatically.
 3. Submit a test lead on the live site, then click **Test trigger** in Zapier. You should see these fields:
-   `address, name, phone, email, timeline, situation, sms_consent (yes/no), consent_text, page_url, page_title, referrer, submitted_at, source`, plus `utm_*`, `gclid` and `fbclid` when the visitor came from an ad.
-4. For the action, choose **Follow Up Boss**. If **Create Event** is available, pick it, because events are what trigger Follow Up Boss lead routing and Action Plans. Set the type to *Seller Inquiry* and the source to *believetheprocess.com*. If Create Event isn't listed, use **Create Person**. Map name, email, phone and the property address. Put timeline, situation, sms_consent and page_url into the message or a note.
-5. Only text leads through automations when `sms_consent` is `yes`. The exact consent wording the lead agreed to arrives in `consent_text`, so keep it on the lead record for your records.
+   `address, name, phone, email, timeline, situation, consent_text, page_url, page_title, referrer, submitted_at, source`, plus `utm_*`, `gclid` and `fbclid` when the visitor came from an ad.
+4. For the action, choose **Follow Up Boss**. If **Create Event** is available, pick it, because events are what trigger Follow Up Boss lead routing and Action Plans. Set the type to *Seller Inquiry* and the source to *believetheprocess.com*. If Create Event isn't listed, use **Create Person**. Map name, email, phone and the property address. Put timeline, situation and page_url into the message or a note.
+5. The exact call/text consent wording the lead agreed to arrives in `consent_text`, along with `submitted_at` and `page_url`. Keep those on the lead record as your proof of consent.
 
 ## Deploying to Netlify
 

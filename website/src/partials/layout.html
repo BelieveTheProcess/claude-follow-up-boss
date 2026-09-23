@@ -1,8 +1,8 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{title}}</title>
 <meta name="description" content="{{description}}">
 <meta name="robots" content="{{robots}}">
@@ -17,18 +17,24 @@
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/site.js" defer></script>
 {{schema}}
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
+
 {{> header}}
-<main id="main">
+
+<main id="top">
 {{content}}
 </main>
+
 {{> footer}}
-{{> sticky-bar}}
+
+<div class="mobile-bar">
+  <a class="btn btn-line" href="tel:+14157700722">Call</a>
+  <a class="btn btn-gold" href="#offer" data-offer-link>Get my offer</a>
+</div>
 </body>
 </html>
