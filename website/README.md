@@ -2,7 +2,7 @@
 
 This is the cash home-buyer website for Believe The Process Ventures LLC. It's plain HTML, CSS and JS with no framework. A small build script (`build.mjs`, no dependencies) adds the shared header, footer, offer form and SEO tags to every page.
 
-The design comes from `design/believetheprocess-home.html`, which is saved here unchanged. The first part of `public/assets/css/site.css` is that file's CSS, copied as-is. Styles added for the other pages are at the bottom, marked "Additions", and use the same colors and fonts.
+The design comes from `design/believetheprocess-home.html`. It's saved here with only the site-rule fixes applied: agent and listing wording removed, and the personal Instagram replaced with the business email. The first part of `public/assets/css/site.css` is that file's CSS, copied as-is. Styles added for the other pages are at the bottom, marked "Additions", and use the same colors and fonts.
 
 ```
 website/
