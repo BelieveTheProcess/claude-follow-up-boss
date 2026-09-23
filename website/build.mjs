@@ -101,6 +101,7 @@ const businessSchema = {
   name: "Believe The Process Ventures LLC",
   url: `${SITE_URL}/`,
   telephone: "+1-415-770-0722",
+  email: "believetheprocess@btpventuresllc.com",
   description:
     "Local, family-run company that buys houses directly for cash in the San Francisco Bay Area. Sell as-is, no commissions, no showings.",
   image: `${SITE_URL}/assets/img/og-image.png`,

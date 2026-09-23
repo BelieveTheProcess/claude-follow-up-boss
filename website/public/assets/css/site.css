@@ -230,3 +230,4 @@ details p a,.county a{font-weight:700}
 .side-card a:hover{text-decoration:underline}
 .side-card .btn{margin-top:.6rem;width:100%}
 .bar .btn{white-space:nowrap}
+footer a[href^="mailto:"]{overflow-wrap:break-word}

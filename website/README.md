@@ -63,10 +63,16 @@ The header and footer already link to every page above, so links to pages marked
 
 Each page gets its own title and meta description (set in its front matter), a canonical URL, Open Graph tags, and LocalBusiness schema. Any FAQ block marked `data-faq` also becomes FAQPage schema automatically. `sitemap.xml` is generated on every build from the pages that exist, so new pages are added to it automatically.
 
+## Site rules (apply to every page)
+
+- The site represents **Believe The Process Ventures LLC only**, as a direct cash buyer. No realtor credentials, agent or brokerage names, license or DRE numbers, listing services, or personal real estate social accounts.
+- Contact: phone **(415) 770-0722**, email **believetheprocess@btpventuresllc.com**.
+- No invented reviews, ratings, years in business, media logos or stats.
+- Social links: none for now. Add them only for Believe The Process Ventures LLC business pages.
+
 ## Before launch: things only you can fill in
 
 - **Reviews:** the homepage has 3 placeholder review cards (look for `REPLACE` in `src/pages/index.html`). Replace them with real reviews used with the seller's permission, or delete the section. The placeholders show no stars, so no rating appears until it's real. Don't launch with the placeholders showing.
-- **Social links:** the Facebook and LinkedIn links in `src/partials/footer.html` point to the sites' home pages. Swap in your business page URLs, or remove them.
 - **Your story and photo** go on the About page (next round).
 
 ## Connecting the form to Follow Up Boss (Zapier)
