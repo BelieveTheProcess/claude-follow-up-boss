@@ -1,0 +1,21 @@
+# Netlify deploy settings for the believetheprocess.com website.
+# The site lives in website/; the rest of this repo (the Follow Up Boss MCP server) is not deployed here.
+[build]
+  base = "website"
+  command = "node build.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/assets/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

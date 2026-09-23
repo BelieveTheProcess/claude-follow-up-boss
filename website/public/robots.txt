@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://believetheprocess.com/sitemap.xml
