@@ -22,11 +22,13 @@ Before the first run, ask the user to confirm or change these. Once confirmed, s
 | Size tolerance | ±20% sqft, ±1 bed, ±1 bath | |
 | Same property type | Required | SFR ≠ townhome ≠ condo |
 | Rehab $/sqft tiers | Cosmetic $20 · Medium $40 · Heavy $65 · Gut $90+ | Local labor costs vary a lot, so the user should set these for their market |
+| High-cost market override | SF Bay Area / NYC / Seattle / LA: roughly 2× the tiers above | Medium Bay Area rehab typically runs $80–100/sqft |
 
 ## Step 1: Pull the subject property
 
 - **DealMachine:** `dealmachine_enrich_address` (or `dealmachine_property_get` with `contact_audience: "none"` and `enrich: false` first, which uses no credits) for beds, baths, sqft, year built, lot, property type, last sale, and AVM.
 - **HouseCanary sidecar** (if connected): the property-details and value endpoints. Tool names come from the package, so list them first and don't guess.
+- **Off-market property** (no active listing): there's no list price, DOM, or remarks. Compare the offer to the as-is AVM instead of list price, and treat condition as unknown. Also look at the unrenovated comps: they show what the house is worth as-is today. There's no listing agent, so a direct-to-owner approach falls under `skills/distressed-seller-outreach` and its compliance gate, not the Offer Sender.
 - **MLS listing** (if the deal came from Redfin): list price, days on market (DOM), price history, and **public remarks**. Remarks are the main input for condition and rehab level.
 
 Check credits with `dealmachine_usage` before any batch over 10 properties. Comps cost 1 credit per subject.
@@ -67,9 +69,10 @@ Use actives and pendings only as a **ceiling check** (ARV shouldn't be above wha
 ## Step 3: Calculate ARV
 
 1. Take the best **3–5** renovated sold comps.
-2. Adjust each to the subject. Use these rough defaults and say they're rough:
-   - sqft: comp $/sqft × subject sqft (primary method)
+2. Adjust each comp's **sale price** to the subject (grid method). Use these rough defaults and say they're rough:
+   - sqft: `(subject sqft − comp sqft) × marginal $/sqft`, where marginal $/sqft ≈ **50% of the comps' median $/sqft**. Do **not** use `comp $/sqft × subject sqft`: smaller homes sell for more per sqft, so scaling them up overstates ARV. In the first live test it produced $1.60M from a comp that actually sold for $1.355M, above every sale in the set.
    - bed: ±$5–10k · bath: ±$5–10k · garage: ±$5–15k · pool: +$0–15k by market
+   - Scale bed/bath adjustments up in high-price markets (over $1M), where $5–10k is too small to matter.
 3. ARV = **median** of the adjusted values. The median resists a single outlier better than the mean.
 4. Show the range too (low adjusted to high adjusted).
 
