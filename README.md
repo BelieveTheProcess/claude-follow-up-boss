@@ -222,6 +222,9 @@ https://your-app.up.railway.app/mcp
 - `social-media-content-batch` - five related social posts from one topic/theme.
 - `distressed-seller-outreach` - cold text/email scripts for pre-foreclosure, financial distress, probate, divorce, and landlord-burnout leads. Leads with a compliance gate (TCPA consent, state foreclosure-consultant law, CAN-SPAM) before drafting anything - read that section before using it.
 
+**Investor deal pipeline** (see `docs/agent-investor-pipeline.md`):
+- `arv-engine` - comps-based ARV, rehab estimate, and MAO for an address or MLS listing (DealMachine comps + HouseCanary sidecar), with a confidence grade and a pass/review/kill QA verdict that routes flagged deals to Slack.
+
 **Operations:**
 - `slack-review-queue` - how to set up and use `notify_slack` to route drafts to Slack for human review.
 - `youtube-clip-agent` - a setup/design guide for a video-repurposing pipeline; **not wired up** (see Notes & gotchas).

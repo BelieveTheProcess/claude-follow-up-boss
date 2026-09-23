@@ -68,9 +68,9 @@ Investors Skool community (skool.com/agentinvestors), and how it maps onto this 
 | Gold Miner | Claude skill: keyword and motivation scoring on remarks (see `skills/fub-lead-scoring`, `skills/distressed-seller-outreach`) | Partially built |
 | Firecrawl | Firecrawl API or Crustdata `web_fetch` | To add |
 | Probate Researcher | County probate scrape + DealMachine skip trace for the personal representative | To build |
-| ARV Engine | `housecanary-sidecar/` (valuations, comps) + DealMachine `comps` | Data tools exist, need the MAO formula |
+| ARV Engine | `skills/arv-engine` on DealMachine `comps` + `housecanary-sidecar/` | Built |
 | Rerun Engine | Scheduled re-query of FUB leads in an "Offer Sent / No Response" stage | To build |
-| QA Agent | Claude skill with hard rules (ARV spread, comp count, max % under list) | To build |
+| QA Agent | Step 6 of `skills/arv-engine` (confidence grade + pass/review/kill) | Built (v1) |
 | Offer Sender | `send_email` (CAN-SPAM compliant) / `send_text` to the listing agent, logged in FUB | Tools exist |
 | Offer Sender Review | `notify_slack` → `skills/slack-review-queue` | Built |
 | Pipeline Monitor | `get_priority_leads`, `list_tasks`, FUB pipeline stages | Built |
