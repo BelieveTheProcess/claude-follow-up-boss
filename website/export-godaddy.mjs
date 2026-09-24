@@ -25,8 +25,9 @@ function walk(dir) {
   });
 }
 
-rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
+// Replace old page files but keep README.md.
+for (const f of readdirSync(out)) if (f.endsWith(".html")) rmSync(join(out, f));
 
 for (const file of walk(dist)) {
   const rel = relative(dist, file).split(sep).join("/");

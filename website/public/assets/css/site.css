@@ -231,3 +231,16 @@ details p a,.county a{font-weight:700}
 .side-card .btn{margin-top:.6rem;width:100%}
 .bar .btn{white-space:nowrap}
 footer a[href^="mailto:"]{overflow-wrap:break-word}
+
+/* Heroes without a form (About, FAQ, legal pages) */
+.hero-simple .hero-grid{grid-template-columns:1fr}
+.hero-simple h1{max-width:20ch}
+.hero-simple .hero-lede{max-width:52ch}
+.legal-page .prose h2{font-size:1.5rem;margin-top:1.8em}
+.legal-page .prose{max-width:760px}
+.contact-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:2rem}
+.contact-cards .side-card p{margin:0;color:var(--muted)}
+.contact-cards .side-card a.big{font:800 1.3rem/1.2 var(--display);font-stretch:85%;text-decoration:none;display:block;padding:.3rem 0;overflow-wrap:anywhere}
+@media (max-width:860px){.contact-cards{grid-template-columns:1fr}}
+.faq-group{margin-top:2.5rem}
+.faq-group h3{font-size:1.2rem;color:var(--bay);margin-bottom:.2rem}

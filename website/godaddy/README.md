@@ -2,10 +2,9 @@
 
 Each `.html` file here is one complete page, with its styles and form script included. You paste the whole file into a GoDaddy **HTML** section.
 
-| File | GoDaddy page | Page URL to set |
-| --- | --- | --- |
-| `home.html` | Home | (home page) |
-| `sell-my-house-fast-san-jose.html` | Sell My House Fast San Jose | `sell-my-house-fast-san-jose` |
+There's one file per page, 28 in all. **The file name is the page URL to set in GoDaddy.** For example, `sell-my-house-fast-oakland.html` goes on a page with the URL `sell-my-house-fast-oakland`. The one exception is `home.html`, which goes on your Home page.
+
+For Google, each page's title and description are in the source file `../src/pages/<page>/index.html`, in the lines at the very top.
 
 To regenerate these after changes: `node build.mjs && node export-godaddy.mjs` in the `website/` folder.
 
@@ -22,14 +21,7 @@ For the San Jose page, first go to **Website → Site Navigation → + → Page*
 
 ## Set each page's Google title and description
 
-GoDaddy ignores the title and description inside pasted code, so enter them in the page's settings under **SEO**:
-
-- **Home**
-  - Title: `Sell Your Bay Area House As-Is | Believe The Process Ventures`
-  - Description: `Get a fair cash offer on your Bay Area house. No repairs, no showings, no commissions on a direct sale. Close on your timeline.`
-- **San Jose**
-  - Title: `Sell My House Fast San Jose, CA | We Buy Houses for Cash`
-  - Description: `Need to sell your house fast in San Jose? We buy San Jose houses for cash, as-is, from Willow Glen to Evergreen. No commissions, no showings. Offer within 24 hours of seeing it. (415) 770-0722.`
+GoDaddy ignores the title and description inside pasted code. For each page, open **Page Settings → SEO** and copy in the `title:` and `description:` lines from the top of that page's source file in `../src/pages/`.
 
 ## Connecting the form
 
@@ -40,6 +32,6 @@ In each pasted page, search the code for `const FORM_ENDPOINT = "";` and put you
 - **Two headers:** GoDaddy keeps its own header and footer around your code. In **Theme** settings, choose the most minimal header you can, and remove the old menu items.
 - **Frame limits:** the code runs inside a frame. The top bar won't stay pinned while scrolling. The phone "Call / Get my offer" bar may sit at the bottom of the frame instead of the screen. If GoDaddy shows an inner scrollbar, drag the section taller in the editor.
 - **Weaker for Google:** content inside a frame counts less for search rankings than a real page. The SEO work from this project (page titles, business schema, sitemap, clean city URLs) only fully works on the Netlify setup.
-- **Missing pages:** links to pages that haven't been added in GoDaddy yet, like other cities and About, go to a "page not found" screen until those pages exist.
+- **Missing pages:** links to pages you haven't added in GoDaddy yet go to a "page not found" screen until those pages exist. With 28 pages to paste, Netlify is much less work.
 
 These pages work on GoDaddy as a stopgap. For the full version, deploy to Netlify and point the domain there: see "Deploying to Netlify" in `../README.md`. You keep the domain at GoDaddy either way.

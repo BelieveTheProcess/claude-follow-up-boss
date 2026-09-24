@@ -253,6 +253,19 @@ details p a,.county a{font-weight:700}
 .bar .btn{white-space:nowrap}
 footer a[href^="mailto:"]{overflow-wrap:break-word}
 
+/* Heroes without a form (About, FAQ, legal pages) */
+.hero-simple .hero-grid{grid-template-columns:1fr}
+.hero-simple h1{max-width:20ch}
+.hero-simple .hero-lede{max-width:52ch}
+.legal-page .prose h2{font-size:1.5rem;margin-top:1.8em}
+.legal-page .prose{max-width:760px}
+.contact-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:2rem}
+.contact-cards .side-card p{margin:0;color:var(--muted)}
+.contact-cards .side-card a.big{font:800 1.3rem/1.2 var(--display);font-stretch:85%;text-decoration:none;display:block;padding:.3rem 0;overflow-wrap:anywhere}
+@media (max-width:860px){.contact-cards{grid-template-columns:1fr}}
+.faq-group{margin-top:2.5rem}
+.faq-group h3{font-size:1.2rem;color:var(--bay);margin-bottom:.2rem}
+
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","@id":"https://believetheprocess.com/#business","name":"Believe The Process Ventures LLC","url":"https://believetheprocess.com/","telephone":"+1-415-770-0722","email":"believetheprocess@btpventuresllc.com","description":"Local, family-run company that buys houses directly for cash in the San Francisco Bay Area. Sell as-is, no commissions, no showings.","image":"https://believetheprocess.com/assets/img/og-image.png","areaServed":[{"@type":"AdministrativeArea","name":"Santa Clara County, CA"},{"@type":"AdministrativeArea","name":"Alameda County, CA"},{"@type":"AdministrativeArea","name":"San Mateo County, CA"},{"@type":"AdministrativeArea","name":"San Francisco County, CA"},{"@type":"AdministrativeArea","name":"Contra Costa County, CA"}]}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How fast can I get an offer? +","acceptedAnswer":{"@type":"Answer","text":"We reply the same business day and usually have a cash offer ready within 24 hours of seeing the property."}},{"@type":"Question","name":"How do you decide what to offer? +","acceptedAnswer":{"@type":"Answer","text":"We look at recent nearby sales, the size and age of the home, bedrooms and bathrooms, and the cost of any repairs. We show you the comps we used so the number makes sense."}},{"@type":"Question","name":"Do I have to clean or fix anything? +","acceptedAnswer":{"@type":"Answer","text":"No. Take what you want and leave the rest. We buy the home as-is."}},{"@type":"Question","name":"Are there fees? +","acceptedAnswer":{"@type":"Answer","text":"There's no commission on a direct cash sale to us. We'll go over every closing cost in writing before you sign anything."}},{"@type":"Question","name":"Am I obligated to accept? +","acceptedAnswer":{"@type":"Answer","text":"Never. The offer is free and you can say no, take time to think, or compare it with other options."}}]}</script>
 </head>
@@ -348,7 +361,7 @@ footer a[href^="mailto:"]{overflow-wrap:break-word}
       <div class="hp" aria-hidden="true"><label for="company">Company</label><input id="company" name="company" tabindex="-1" autocomplete="off"></div>
       <button class="btn btn-gold" type="submit">Get my cash offer</button>
       <div class="form-msg" id="form-msg" role="status" aria-live="polite"></div>
-      <p class="fine" data-consent>By submitting, you agree to be contacted by Believe The Process Ventures by call, text, or email about your property. Message and data rates may apply. Reply STOP to opt out. See our <a target="_top" href="https://believetheprocess.com/privacy-policy/">Privacy Policy</a>.</p>
+      <p class="fine" data-consent>By submitting, you agree to be contacted by Believe The Process Ventures by call, text, or email about your property. Message and data rates may apply. Message frequency varies. Reply STOP to opt out or HELP for help. See our <a target="_top" href="https://believetheprocess.com/privacy-policy/">Privacy Policy</a>.</p>
     </form>
 
   </div>
@@ -524,29 +537,9 @@ footer a[href^="mailto:"]{overflow-wrap:break-word}
   </div>
 </section>
 
-<!-- ===== Reviews ===== -->
-<section class="reviews" aria-labelledby="rev-title">
-  <div class="wrap">
-    <h2 id="rev-title">What homeowners say</h2>
-    <!-- REPLACE: swap these three cards for real client reviews (with permission) before going live.
-         Star ratings were removed from the placeholders so no rating is shown until it is real.
-         For a real 5-star review, add: <div class="stars" aria-label="5 out of 5 stars">★★★★★</div> -->
-    <div class="review-grid">
-      <figure class="review">
-        <blockquote>Client review goes here. Keep it to two or three sentences about their situation and how it went.</blockquote>
-        <figcaption><cite>Client name<span>City, CA</span></cite></figcaption>
-      </figure>
-      <figure class="review">
-        <blockquote>Client review goes here. Keep it to two or three sentences about their situation and how it went.</blockquote>
-        <figcaption><cite>Client name<span>City, CA</span></cite></figcaption>
-      </figure>
-      <figure class="review">
-        <blockquote>Client review goes here. Keep it to two or three sentences about their situation and how it went.</blockquote>
-        <figcaption><cite>Client name<span>City, CA</span></cite></figcaption>
-      </figure>
-    </div>
-  </div>
-</section>
+<!-- ===== Reviews =====
+     Hidden for launch until you have real reviews. Edit src/partials/reviews.html,
+     then ask to have the reviews section switched back on here. -->
 
 <!-- ===== Areas ===== -->
 <section id="areas" aria-labelledby="areas-title">

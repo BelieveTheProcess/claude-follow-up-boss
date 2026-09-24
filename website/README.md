@@ -26,40 +26,38 @@ To preview locally, run `node build.mjs` and open the files in `dist/`, or run `
 
 ## Page plan
 
-Status: **built** = ready for review in this round. Everything else is planned for the next round.
+All pages are built.
 
 | Page | URL | Status |
 | --- | --- | --- |
 | Home | `/` | built |
 | San Jose | `/sell-my-house-fast-san-jose/` | built |
-| Santa Clara | `/sell-my-house-fast-santa-clara/` | next |
-| Sunnyvale | `/sell-my-house-fast-sunnyvale/` | next |
-| Milpitas | `/sell-my-house-fast-milpitas/` | next |
-| Mountain View | `/sell-my-house-fast-mountain-view/` | next |
-| Campbell | `/sell-my-house-fast-campbell/` | next |
-| Morgan Hill | `/sell-my-house-fast-morgan-hill/` | next |
-| Gilroy | `/sell-my-house-fast-gilroy/` | next |
-| Fremont | `/sell-my-house-fast-fremont/` | next |
-| Hayward | `/sell-my-house-fast-hayward/` | next |
-| Oakland | `/sell-my-house-fast-oakland/` | next |
-| San Francisco | `/sell-my-house-fast-san-francisco/` | next |
-| Daly City | `/sell-my-house-fast-daly-city/` | next |
-| Concord | `/sell-my-house-fast-concord/` | next |
-| Inherited / probate | `/sell-inherited-house-probate/` | next |
-| Foreclosure / behind on payments | `/sell-house-facing-foreclosure/` | next |
-| House needs repairs | `/sell-house-that-needs-repairs/` | next |
-| Divorce | `/sell-house-during-divorce/` | next |
-| Tired landlord / problem tenants | `/sell-rental-property-with-tenants/` | next |
-| Relocating / downsizing | `/sell-house-relocating-downsizing/` | next |
-| Vacant property | `/sell-vacant-house/` | next |
-| How It Works | `/how-it-works/` | next |
-| About | `/about/` | next |
-| FAQ | `/faq/` | next |
-| Contact / Get Your Offer | `/contact-us/` (same URL as your current site) | next |
-| Privacy Policy | `/privacy-policy/` | next |
-| Terms of Service | `/terms-of-service/` | next |
-
-The header and footer already link to every page above, so links to pages marked "next" return the 404 page until those pages are built.
+| Santa Clara | `/sell-my-house-fast-santa-clara/` | built |
+| Sunnyvale | `/sell-my-house-fast-sunnyvale/` | built |
+| Milpitas | `/sell-my-house-fast-milpitas/` | built |
+| Mountain View | `/sell-my-house-fast-mountain-view/` | built |
+| Campbell | `/sell-my-house-fast-campbell/` | built |
+| Morgan Hill | `/sell-my-house-fast-morgan-hill/` | built |
+| Gilroy | `/sell-my-house-fast-gilroy/` | built |
+| Fremont | `/sell-my-house-fast-fremont/` | built |
+| Hayward | `/sell-my-house-fast-hayward/` | built |
+| Oakland | `/sell-my-house-fast-oakland/` | built |
+| San Francisco | `/sell-my-house-fast-san-francisco/` | built |
+| Daly City | `/sell-my-house-fast-daly-city/` | built |
+| Concord | `/sell-my-house-fast-concord/` | built |
+| Inherited / probate | `/sell-inherited-house-probate/` | built |
+| Foreclosure / behind on payments | `/sell-house-facing-foreclosure/` | built |
+| House needs repairs | `/sell-house-that-needs-repairs/` | built |
+| Divorce | `/sell-house-during-divorce/` | built |
+| Tired landlord / problem tenants | `/sell-rental-property-with-tenants/` | built |
+| Relocating / downsizing | `/sell-house-relocating-downsizing/` | built |
+| Vacant property | `/sell-vacant-house/` | built |
+| How It Works | `/how-it-works/` | built |
+| About | `/about/` | built |
+| FAQ | `/faq/` | built |
+| Contact / Get Your Offer | `/contact-us/` (same URL as your current site) | built |
+| Privacy Policy | `/privacy-policy/` | built |
+| Terms of Service | `/terms-of-service/` | built |
 
 Each page gets its own title and meta description (set in its front matter), a canonical URL, Open Graph tags, and LocalBusiness schema. Any FAQ block marked `data-faq` also becomes FAQPage schema automatically. `sitemap.xml` is generated on every build from the pages that exist, so new pages are added to it automatically.
 
@@ -72,8 +70,9 @@ Each page gets its own title and meta description (set in its front matter), a c
 
 ## Before launch: things only you can fill in
 
-- **Reviews:** the homepage has 3 placeholder review cards (look for `REPLACE` in `src/pages/index.html`). Replace them with real reviews used with the seller's permission, or delete the section. The placeholders show no stars, so no rating appears until it's real. Don't launch with the placeholders showing.
-- **Your story and photo** go on the About page (next round).
+- **Reviews:** the reviews section is switched off for launch so no placeholders show. When you have real reviews (with the seller's permission), put them in `src/partials/reviews.html` and switch the section back on in `src/pages/index.html` where the "Reviews" note is.
+- **Your story and photo:** there's a marked spot at the top of the story section in `src/pages/about/index.html`. The page reads fine without it until then.
+- **Privacy Policy and Terms:** plain-language versions are written to match how the site and form work. Have an attorney take a quick look.
 
 ## Connecting the form to Follow Up Boss (Zapier)
 
