@@ -55,33 +55,56 @@ test('reports are per-user CRUD', async () => {
   t.close();
 });
 
-test('/api/ai parses fenced JSON, enforces limits and daily cap, refunds failures', async () => {
-  const t = await boot({ limit: 2 });
+test('/api/analyze-room builds the prompt server-side, enforces limits and daily cap', async () => {
+  const bodies = [];
+  const t = await boot({ limit: 2, anthropic: async (u, o) => { bodies.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: '```json\n{"a":1}\n```' }] }) }; } });
   const a = await signup(t);
-  assert.equal((await t.call('POST', '/api/ai', { prompt: 'hi' })).status, 401);
-  const ok = await t.call('POST', '/api/ai', { prompt: 'hi', images: ['AAAA'] }, a.cookie);
+  const room = { label: 'Kitchen', sqft: 120, mode: 'investor', images: ['AAAA'] };
+  assert.equal((await t.call('POST', '/api/analyze-room', room)).status, 401);
+  const ok = await t.call('POST', '/api/analyze-room', room, a.cookie);
   assert.deepEqual(ok.json, { data: { a: 1 } });
-  assert.equal((await t.call('POST', '/api/ai', { prompt: 'hi', images: Array(9).fill('A') }, a.cookie)).json.error, 'image_rejected');
-  assert.equal((await t.call('POST', '/api/ai', { prompt: 'hi', images: ['A'.repeat(2.1 * 1024 * 1024)] }, a.cookie)).json.error, 'image_rejected');
-  assert.equal((await t.call('POST', '/api/ai', { prompt: 'x'.repeat(260 * 1024) }, a.cookie)).status, 400);
-  assert.equal((await t.call('POST', '/api/ai', { prompt: 'hi' }, a.cookie)).status, 200);
-  const over = await t.call('POST', '/api/ai', { prompt: 'hi' }, a.cookie);
+  const content = bodies[0].messages[0].content;
+  assert.equal(content[0].type, 'image');
+  assert.match(content[1].text, /Kitchen \(about 120 sq ft\)/);
+  assert.match(content[1].text, /real estate investor/);
+  assert.equal((await t.call('POST', '/api/analyze-room', { ...room, images: [] }, a.cookie)).json.error, 'image_rejected');
+  assert.equal((await t.call('POST', '/api/analyze-room', { ...room, images: Array(9).fill('A') }, a.cookie)).json.error, 'image_rejected');
+  assert.equal((await t.call('POST', '/api/analyze-room', { ...room, images: ['A'.repeat(2.1 * 1024 * 1024)] }, a.cookie)).json.error, 'image_rejected');
+  assert.equal((await t.call('POST', '/api/ai', { prompt: 'anything' }, a.cookie)).status, 404);
+  assert.equal((await t.call('POST', '/api/analyze-room', room, a.cookie)).status, 200);
+  const over = await t.call('POST', '/api/analyze-room', room, a.cookie);
   assert.equal(over.status, 429);
   assert.equal(over.json.error, 'daily_limit');
   t.close();
 });
 
-test('/api/ai maps upstream failures and refunds the call', async () => {
-  let mode = 'badjson';
-  const t = await boot({ limit: 1, anthropic: async () => mode === 'badjson'
-    ? { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'sorry' }] }) }
-    : { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: '{"z":2}' }] }) } });
+test('/api/analyze-docs trims long text and passes scan items; /api/parse-comps handles text and images', async () => {
+  const bodies = [];
+  const t = await boot({ anthropic: async (u, o) => { bodies.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: '{"findings":[],"comps":[]}' }] }) }; } });
   const a = await signup(t);
-  const bad = await t.call('POST', '/api/ai', { prompt: 'hi' }, a.cookie);
+  assert.equal((await t.call('POST', '/api/analyze-docs', { docs: [{ name: 'r.pdf', kind: 'pdf', text: '' }] }, a.cookie)).status, 400);
+  const d = await t.call('POST', '/api/analyze-docs', { docs: [{ name: 'r.pdf', kind: 'pdf', text: 'x'.repeat(200000) }], scan: [{ id: 's1', room: 'Kitchen', title: 'Leak', category: 'Plumbing', low: 1, high: 2 }], mode: 'buyer' }, a.cookie);
+  assert.equal(d.status, 200);
+  assert.equal(d.json.trimmed, true);
+  assert.match(bodies[0].messages[0].content[0].text, /"id":"s1"/);
+  assert.equal((await t.call('POST', '/api/parse-comps', {}, a.cookie)).status, 400);
+  assert.equal((await t.call('POST', '/api/parse-comps', { text: '1 Main sold 900k' }, a.cookie)).status, 200);
+  assert.match(bodies[1].messages[0].content[0].text, /TEXT:\n1 Main sold 900k/);
+  assert.equal((await t.call('POST', '/api/parse-comps', { images: ['AAAA'] }, a.cookie)).status, 200);
+  assert.equal(bodies[2].messages[0].content[0].type, 'image');
+  t.close();
+});
+
+test('AI upstream failures map to codes and are refunded', async () => {
+  let mode = 'badjson';
+  const t = await boot({ limit: 1, anthropic: async () => ({ ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: mode === 'badjson' ? 'sorry' : '{"z":2}' }] }) }) });
+  const a = await signup(t);
+  const body = { label: 'Kitchen', images: ['AAAA'] };
+  const bad = await t.call('POST', '/api/analyze-room', body, a.cookie);
   assert.equal(bad.status, 502);
   assert.equal(bad.json.error, 'invalid_json');
   mode = 'good';
-  assert.deepEqual((await t.call('POST', '/api/ai', { prompt: 'hi' }, a.cookie)).json, { data: { z: 2 } });
+  assert.deepEqual((await t.call('POST', '/api/analyze-room', body, a.cookie)).json, { data: { z: 2 } });
   t.close();
 });
 
@@ -105,7 +128,7 @@ test('comps endpoints call DealMachine with the documented shapes', async () => 
 test('admin lists users with usage and can disable', async () => {
   const t = await boot();
   const a = await signup(t), b = await signup(t, 'b@x.com');
-  await t.call('POST', '/api/ai', { prompt: 'hi' }, b.cookie);
+  await t.call('POST', '/api/analyze-room', { label: 'Kitchen', images: ['AAAA'] }, b.cookie);
   assert.equal((await t.call('GET', '/api/admin/users', null, b.cookie)).status, 403);
   const l = await t.call('GET', '/api/admin/users', null, a.cookie);
   assert.equal(l.json.users.find((u) => u.email === 'b@x.com').today, 1);

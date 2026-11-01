@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTP Analyzer admin</title>
+<style>
+body{font:15px/1.4 system-ui,sans-serif;background:#f6f5f2;margin:0;padding:16px;color:#1c1c1c}
+main{max-width:720px;margin:0 auto}h1{font-size:20px}
+.u{background:#fff;border-radius:12px;padding:12px 14px;margin:10px 0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.u small{color:#666;display:block}.off{opacity:.55}
+button{padding:9px 14px;border:1px solid #1c1c1c;border-radius:8px;background:#fff;font-size:14px}
+#msg{color:#b00020}
+</style></head><body><main>
+<h1>Users and usage</h1><p><a href="/">Back to the analyzer</a></p><p id="msg" role="alert"></p><div id="list"></div></main>
+<script>
+function load() {
+  fetch('/api/admin/users').then(function (r) {
+    if (r.status === 401) { location.href = '/login.html'; return null; }
+    if (r.status === 403) { document.getElementById('msg').textContent = 'Admins only.'; return null; }
+    return r.json();
+  }).then(function (j) {
+    if (!j) return;
+    var l = document.getElementById('list'); l.textContent = '';
+    j.users.forEach(function (u) {
+      var d = document.createElement('div'); d.className = 'u' + (u.disabled ? ' off' : '');
+      var t = document.createElement('div'); t.textContent = u.email;
+      var s = document.createElement('small');
+      s.textContent = 'Today: ' + u.today + ' AI calls · All time: ' + u.total + ' · Joined ' + String(u.created_at).slice(0, 10) + (u.disabled ? ' · Disabled' : '');
+      t.appendChild(s); d.appendChild(t);
+      var b = document.createElement('button'); b.textContent = u.disabled ? 'Enable' : 'Disable';
+      b.onclick = function () {
+        fetch('/api/admin/users/' + u.id + '/disabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: !u.disabled }) }).then(load);
+      };
+      d.appendChild(b); l.appendChild(d);
+    });
+  });
+}
+load();
+</script></body></html>

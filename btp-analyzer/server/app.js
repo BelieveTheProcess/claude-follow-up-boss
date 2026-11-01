@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hashPassword, verifyPassword, makeCookie, clearCookie, readSession, rateLimit } from './auth.js';
 import { LIMITS } from './ai.js';
+import { roomPrompt, docsPrompt, compsPrompt } from './prompts.js';
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,15 +80,9 @@ export function createApp({ db, config, runAI, dm }) {
     res.json({ ok: true });
   }));
 
-  // ---- AI ----
-  app.post('/api/ai', requireUser, asyncH(async (req, res) => {
-    const { prompt, images } = req.body || {};
-    const imgs = Array.isArray(images) ? images : [];
-    if (typeof prompt !== 'string' || !prompt || Buffer.byteLength(prompt) > LIMITS.maxPromptBytes) return res.status(400).json({ error: 'bad_request' });
-    if (imgs.length > LIMITS.maxImages) return res.status(400).json({ error: 'image_rejected' });
-    for (const b of imgs) {
-      if (typeof b !== 'string' || b.length * 0.75 > LIMITS.maxImageBytes) return res.status(400).json({ error: 'image_rejected' });
-    }
+  // ---- AI (fixed server-side prompts only) ----
+  async function counted(req, res, prompt, imgs) {
+    if (Buffer.byteLength(prompt) > LIMITS.maxPromptBytes) return res.status(413).json({ error: 'too_large' });
     // Atomically reserve a call under the daily cap.
     const u = await db.query(
       `INSERT INTO usage (user_id, day, ai_calls) VALUES ($1, CURRENT_DATE, 1)
@@ -95,12 +90,55 @@ export function createApp({ db, config, runAI, dm }) {
        WHERE usage.ai_calls < $2 RETURNING ai_calls`, [req.user.id, config.dailyAiLimit]);
     if (!u.rows.length) return res.status(429).json({ error: 'daily_limit' });
     try {
-      res.json({ data: await runAI(prompt, imgs) });
+      return await runAI(prompt, imgs);
     } catch (e) {
       // Failed calls don't count against the user's cap.
       await db.query('UPDATE usage SET ai_calls = GREATEST(ai_calls - 1, 0) WHERE user_id=$1 AND day=CURRENT_DATE', [req.user.id]);
       throw e;
     }
+  }
+  function checkImages(images, res, min = 0) {
+    const imgs = Array.isArray(images) ? images : [];
+    if (imgs.length < min || imgs.length > LIMITS.maxImages) { res.status(400).json({ error: 'image_rejected' }); return null; }
+    for (const b of imgs) {
+      if (typeof b !== 'string' || !b || b.length * 0.75 > LIMITS.maxImageBytes) { res.status(400).json({ error: 'image_rejected' }); return null; }
+    }
+    return imgs;
+  }
+  const bad = (res) => res.status(400).json({ error: 'bad_request' });
+  const mode = (m) => (m === 'investor' ? 'investor' : 'buyer');
+
+  app.post('/api/analyze-room', requireUser, asyncH(async (req, res) => {
+    const b = req.body || {};
+    const imgs = checkImages(b.images, res, 1);
+    if (!imgs) return;
+    if (typeof b.label !== 'string' || !b.label) return bad(res);
+    const prompt = roomPrompt({ label: b.label, sqft: b.sqft, address: b.address, mode: mode(b.mode), n: imgs.length });
+    const data = await counted(req, res, prompt, imgs);
+    if (data !== undefined && !res.headersSent) res.json({ data });
+  }));
+
+  app.post('/api/analyze-docs', requireUser, asyncH(async (req, res) => {
+    const b = req.body || {};
+    const imgs = checkImages(b.images, res);
+    if (!imgs) return;
+    if (!Array.isArray(b.docs) || !b.docs.length || b.docs.length > 20) return bad(res);
+    const docs = b.docs.map((d) => ({ name: String((d && d.name) || 'Document'), kind: d && d.kind === 'pdf' ? 'pdf' : 'other',
+      text: typeof (d && d.text) === 'string' ? d.text : '', imageCount: Math.max(0, Math.min(Number(d && d.imageCount) || 0, 50)) }));
+    if (!imgs.length && !docs.some((d) => d.text)) return bad(res);
+    const built = docsPrompt({ docs, scan: Array.isArray(b.scan) ? b.scan : [], address: b.address, mode: mode(b.mode), imageTotal: imgs.length });
+    const data = await counted(req, res, built.prompt, imgs);
+    if (data !== undefined && !res.headersSent) res.json({ data, trimmed: built.trimmed });
+  }));
+
+  app.post('/api/parse-comps', requireUser, asyncH(async (req, res) => {
+    const b = req.body || {};
+    const imgs = checkImages(b.images, res);
+    if (!imgs) return;
+    const text = typeof b.text === 'string' ? b.text.trim() : '';
+    if (!imgs.length && !text) return bad(res);
+    const data = await counted(req, res, compsPrompt({ text, hasImages: imgs.length > 0 }), imgs);
+    if (data !== undefined && !res.headersSent) res.json({ data });
   }));
 
   // ---- comps ----

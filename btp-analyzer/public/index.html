@@ -699,6 +699,8 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
       case 'invalid_json':
       case 'empty_completion': return 'The analysis didn’t come back in a usable form. Tap Analyze room to try again.';
       case 'session_expired': return 'Your session expired. Sign in again, then retry.';
+      case 'too_large': return 'That’s too much to send at once. Use fewer or smaller photos or shorter documents.';
+      case 'bad_request': return 'Something was missing from that request. Check your inputs and try again.';
       case 'daily_limit': return 'You’ve reached today’s analysis limit. It resets tomorrow.';
       case 'upstream_error': return 'The analysis service didn’t respond. Try again in a moment.';
       case 'images_unavailable':
@@ -711,23 +713,6 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
   }
 
   /* ---------- Analysis ---------- */
-  function buildPrompt(label, sqft, n, address, mode) {
-    var buyer = mode === 'buyer';
-    return [
-      'You are a veteran San Francisco Bay Area home inspector and rehab estimator. Study the ' + n + ' attached photo(s) of a ' + label + (sqft ? ' (about ' + sqft + ' sq ft)' : '') + (address ? ' at ' + address : '') + '.',
-      'The photos are numbered 1 to ' + n + ' in the order attached.',
-      'Rules:',
-      '- Report only what is visible. Never invent hidden defects. Put anything that needs a closer look in "inspect_further".',
-      '- Identify the main finish materials you can see (flooring, walls, ceiling, counters, cabinets, fixtures, windows, doors, roofing, siding) and their condition.',
-      '- For each real problem, give a realistic low and high cost in US dollars for the Bay Area, labor and materials included, at current contractor pricing. If the room size is unknown, assume a typical size for this room type and say so in the summary.',
-      '- Do not label anything major unless it affects safety, structure, or water intrusion, or would cost over 5000 dollars to fix.',
-      '- Skip nitpicks that would cost under 100 dollars. List at most 12 issues.',
-      buyer ? 'Audience: a home buyer. Use plain, friendly language with no trade jargon.' : 'Audience: a real estate investor flipping the house. Write like a contractor scoping the job, with specific scope and trade terms.',
-      'Respond with JSON only. No markdown fences, no commentary. Use exactly this shape:',
-      '{"room_summary":"two sentences max","overall_condition":"good|fair|poor","materials":[{"item":"Flooring","material":"Luxury vinyl plank","condition":"good|fair|poor"}],"issues":[{"title":"short name","category":"Flooring|Paint|Drywall|Plumbing|Electrical|Roofing|Windows and doors|HVAC|Cabinets and counters|Fixtures|Exterior|Foundation|Pest and moisture|Other","severity":"minor|moderate|major","what_we_see":"one sentence","recommended_fix":"one sentence","cost_low":0,"cost_high":0,"confidence":"low|medium|high","photo":1}],"inspect_further":["short item"]}'
-    ].join('\n');
-  }
-
   function normalize(d, label, sqft, thumbs) {
     d = d && typeof d === 'object' ? d : {};
     var cond = ['good', 'fair', 'poor'].indexOf(d.overall_condition) >= 0 ? d.overall_condition : 'fair';
@@ -772,18 +757,16 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     var sqft = num($('#sqft').value);
     var address = $('#address').value.trim();
     var photos = state.pending.slice();
-    var prompt = buildPrompt(label, sqft, photos.length, address, state.mode);
 
     setNotice('');
     state.busy = true;
     ctl = new AbortController();
     setBusy(true);
 
-    sample.json(prompt, {
-      images: photos.map(function (p) { return p.blob; }),
-      signal: ctl.signal,
-      modelTier: 'default'
-    }).then(function (data) {
+    sample.analyzeRoom({
+      label: label, sqft: sqft, address: address, mode: state.mode,
+      images: photos.map(function (p) { return p.blob; })
+    }, { signal: ctl.signal }).then(function (data) {
       var room = normalize(data, label, sqft, photos.map(function (p) { return p.thumb; }));
       room.minis = photos.map(function (p) { return p.mini; });
       state.rooms.push(room);
@@ -1284,12 +1267,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     if (!msg) { n.hidden = true; n.textContent = ''; } else { n.hidden = false; n.textContent = msg; }
   }
   function setBar(sel, on) { var b = $(sel); if (b) b.className = 'busy' + (on ? ' on' : ''); }
-  function runJSON(prompt, images) {
-    aiCtl = new AbortController();
-    var o = { signal: aiCtl.signal, modelTier: 'default' };
-    if (images && images.length) o.images = images;
-    return sample.json(prompt, o);
-  }
+  function newCtl() { aiCtl = new AbortController(); return { signal: aiCtl.signal }; }
   function readAsArrayBuffer(file) {
     return new Promise(function (res, rej) {
       var r = new FileReader();
@@ -1440,47 +1418,6 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     });
   }
 
-  function buildDocPrompt(docs, images) {
-    var withText = docs.filter(function (d) { return d.text; });
-    var total = 0;
-    withText.forEach(function (d) { total += d.text.length; });
-    var BUDGET = 190000, trimmed = total > BUDGET;
-    var blocks = withText.map(function (d, i) {
-      var t = d.text;
-      if (trimmed) t = t.slice(0, Math.floor(BUDGET * d.text.length / total));
-      return '=== DOCUMENT ' + (i + 1) + ': ' + d.name + ' ===\n' + t;
-    });
-    var imgNames = [];
-    docs.forEach(function (d) {
-      (d.images || []).forEach(function (b, k) { imgNames.push(d.name + (d.kind === 'pdf' ? ' (page ' + (k + 1) + ')' : '')); });
-    });
-    imgNames = imgNames.slice(0, images.length);
-    var scan = [];
-    state.rooms.forEach(function (r) {
-      if (r.docs) return;
-      r.issues.forEach(function (i) { scan.push({ id: i.id, room: r.label, title: i.title, category: i.category, low: i.low, high: i.high }); });
-    });
-    var buyer = state.mode === 'buyer';
-    var lines = [
-      'You are a veteran San Francisco Bay Area home inspector and rehab estimator. Read the home inspection reports and seller disclosures below' + ($('#address').value.trim() ? ' for the property at ' + $('#address').value.trim() : '') + '.',
-      buyer ? 'Audience: a home buyer. Use plain, friendly language with no trade jargon.' : 'Audience: a real estate investor. Write like a contractor scoping the job.',
-      'Documents start with a header line like === DOCUMENT 1: name === and pages are marked [Page n].',
-      blocks.join('\n\n'),
-      imgNames.length ? 'The attached images are scanned pages, in this order: ' + imgNames.join('; ') + '.' : '',
-      'Items already flagged from the buyer’s own photo walkthrough (JSON): ' + JSON.stringify(scan),
-      'Rules:',
-      '- Extract every finding that matters for repairs, safety, or negotiation: defects, deferred maintenance, water intrusion or moisture, mold, pests, roof, foundation, electrical, plumbing, heating and cooling, unpermitted work, and past problems disclosed by the seller.',
-      '- Skip boilerplate, legal text, and informational items that need no action. List at most 25 findings, most important first.',
-      '- If the document gives a repair cost, use it and set cost_source to "report". Otherwise estimate a realistic Bay Area low and high in US dollars, labor and materials, and set cost_source to "estimate".',
-      '- If a finding is the same problem as an item in the photo walkthrough list, set matches_scan_id to that item’s id. Otherwise null.',
-      '- Do not label anything major unless it affects safety, structure, or water intrusion, or would cost over 5000 dollars to fix.',
-      '- Never invent findings that are not in the documents.',
-      'Respond with JSON only. No markdown fences. Use exactly this shape:',
-      '{"summary":"two sentences on the overall condition and the main concern","top_risks":["short item"],"findings":[{"title":"short name","category":"Flooring|Paint|Drywall|Plumbing|Electrical|Roofing|Windows and doors|HVAC|Cabinets and counters|Fixtures|Exterior|Foundation|Pest and moisture|Other","severity":"minor|moderate|major","document":"document name","page":0,"what_report_says":"one sentence","recommended_fix":"one sentence","cost_low":0,"cost_high":0,"cost_source":"report|estimate","matches_scan_id":null}],"questions_for_seller":["short question"]}'
-    ];
-    return { prompt: lines.filter(Boolean).join('\n'), trimmed: trimmed };
-  }
-
   function buildDocRoom(d) {
     d = d && typeof d === 'object' ? d : {};
     var roomId = uid();
@@ -1550,12 +1487,20 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     var hasText = docs.some(function (d) { return d.text && d.text.length > 0; });
     if (!hasText && !images.length) { noteTo('#docNotice', 'Nothing readable in those files. Try pasting the text.'); return; }
 
-    var built = buildDocPrompt(docs, images);
+    var scan = [];
+    state.rooms.forEach(function (r) {
+      if (r.docs) return;
+      r.issues.forEach(function (i) { scan.push({ id: i.id, room: r.label, title: i.title, category: i.category, low: i.low, high: i.high }); });
+    });
     noteTo('#docNotice', '');
     docBusy = true;
     setBar('#docBusy', true);
     renderDocs();
-    runJSON(built.prompt, images).then(function (data) {
+    sample.analyzeDocs({
+      docs: docs.map(function (d) { return { name: d.name, kind: d.kind, text: d.text || '', imageCount: (d.images || []).length }; }),
+      scan: scan, address: $('#address').value.trim(), mode: state.mode, images: images
+    }, newCtl()).then(function (resp) {
+      var data = resp.data;
       state.rooms.filter(function (r) { return r.docs; }).forEach(function (r) { restoreSuperseded(r.id); });
       state.rooms = state.rooms.filter(function (r) { return !r.docs; });
       var room = buildDocRoom(data);
@@ -1563,7 +1508,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
       render();
       var msg = '';
       if (!room.issues.length) msg = 'No repair findings came out of these documents. ';
-      if (built.trimmed) msg += 'These documents were long, so I read the first part of each. Findings later in the files may be missing.';
+      if (resp.trimmed) msg += 'These documents were long, so I read the first part of each. Findings later in the files may be missing.';
       noteTo('#docNotice', msg.trim());
       var el = $('#docTotals');
       if (el && !el.hidden && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
@@ -1816,14 +1761,12 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     updateCmaResult();
   }
 
-  var COMP_SCHEMA = 'Respond with JSON only, no markdown: {"comps":[{"address":"","sold_price":0,"sold_date":"YYYY-MM-DD","sqft":0,"beds":0,"baths":0,"distance_miles":null}]}';
-
-  function runComps(prompt, images) {
+  function runComps(payload) {
     if (cmaBusy) return;
     cmaBusy = true;
     setBar('#cmaBusy', true);
     noteTo('#cmaNotice', '');
-    runJSON(prompt, images).then(function (data) {
+    sample.parseComps(payload, newCtl()).then(function (data) {
       var list = (data && Array.isArray(data.comps)) ? data.comps : [];
       var added = list.map(normComp).filter(function (c) { return c.price > 0 || c.addr; });
       added.forEach(function (c) { cma.comps.push(c); });
@@ -1848,14 +1791,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     var text = $('#cmaPaste').value.trim();
     if (!text) { noteTo('#cmaNotice', 'Paste some comps first.'); return; }
     if (!sample) { noteTo('#cmaNotice', 'Reading comps runs through Claude. Open this page in the Claude app or on claude.ai.'); return; }
-    runComps([
-      'Extract sold comparable properties from the text below.',
-      'Include only homes that sold. Use null or 0 for any field that is not in the text. Convert dates to YYYY-MM-DD. Do not invent values.',
-      COMP_SCHEMA,
-      '',
-      'TEXT:',
-      text
-    ].join('\n'), null);
+    runComps({ text: text });
   }
 
   function parseCompsShots(list) {
@@ -1864,11 +1800,7 @@ textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--
     if (!sample || !imageLimits) { noteTo('#cmaNotice', 'This view can’t send screenshots to Claude. Paste the comps as text instead.'); return; }
     noteTo('#cmaNotice', 'Preparing screenshots…');
     Promise.all(files.map(processImage)).then(function (ps) {
-      runComps([
-        'The attached screenshots show sold comparable properties from a listing site or MLS.',
-        'Extract every home that sold. Use null or 0 for any field you cannot see. Convert dates to YYYY-MM-DD. Do not invent values.',
-        COMP_SCHEMA
-      ].join('\n'), ps.map(function (p) { return p.blob; }));
+      runComps({ images: ps.map(function (p) { return p.blob; }) });
     }).catch(function () { noteTo('#cmaNotice', 'One screenshot couldn’t be read. Try a JPG or PNG.'); });
   }
 

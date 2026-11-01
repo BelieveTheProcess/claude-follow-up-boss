@@ -31,12 +31,25 @@
     });
   }
 
+  function post(url, body, opts) {
+    return api('POST', url, body, opts && opts.signal);
+  }
+  function b64s(blobs) { return Promise.all((blobs || []).map(toBase64)); }
   var sample = {
     limits: function () { return Promise.resolve({ images: { maxCount: 8 } }); },
-    json: function (prompt, opts) {
-      opts = opts || {};
-      return Promise.all((opts.images || []).map(toBase64)).then(function (imgs) {
-        return api('POST', '/api/ai', { prompt: prompt, images: imgs }, opts.signal);
+    analyzeRoom: function (p, opts) {
+      return b64s(p.images).then(function (imgs) {
+        return post('/api/analyze-room', { label: p.label, sqft: p.sqft, address: p.address, mode: p.mode, images: imgs }, opts);
+      }).then(function (j) { return j.data; });
+    },
+    analyzeDocs: function (p, opts) {
+      return b64s(p.images).then(function (imgs) {
+        return post('/api/analyze-docs', { docs: p.docs, scan: p.scan, address: p.address, mode: p.mode, images: imgs }, opts);
+      });
+    },
+    parseComps: function (p, opts) {
+      return b64s(p.images).then(function (imgs) {
+        return post('/api/parse-comps', { text: p.text, images: imgs }, opts);
       }).then(function (j) { return j.data; });
     }
   };
