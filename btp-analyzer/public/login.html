@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Believe the Process Analyzer</title>
+<style>
+body{font:16px/1.4 system-ui,sans-serif;background:#f6f5f2;margin:0;display:grid;place-items:center;min-height:100vh;color:#1c1c1c}
+form{background:#fff;padding:24px;border-radius:14px;width:min(360px,calc(100vw - 32px));box-shadow:0 2px 12px #0001}
+h1{font-size:20px;margin:0 0 16px}label{display:block;font-size:14px;margin:12px 0 4px}
+input{width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid #bbb;border-radius:8px}
+button{width:100%;margin-top:16px;padding:13px;font-size:16px;border:0;border-radius:8px;background:#1c1c1c;color:#fff}
+.alt{background:none;color:#1c1c1c;text-decoration:underline;margin-top:8px}#msg{color:#b00020;min-height:1.4em;margin-top:10px;font-size:14px}
+[hidden]{display:none}
+</style></head><body>
+<form id="f">
+  <h1>Believe the Process Analyzer</h1>
+  <label for="email">Email</label><input id="email" type="email" autocomplete="email" required>
+  <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" minlength="8" required>
+  <div id="inv" hidden><label for="invite">Invite code</label><input id="invite" autocomplete="off"></div>
+  <div id="msg" role="alert"></div>
+  <button id="go" type="submit">Sign in</button>
+  <button id="alt" class="alt" type="button">I have an invite code</button>
+</form>
+<script>
+var signup = false, $ = function (i) { return document.getElementById(i); };
+var copy = { bad_login: 'Email or password didn’t match.', bad_invite: 'That invite code isn’t valid.', bad_email: 'Enter a valid email.',
+  weak_password: 'Use at least 8 characters.', email_taken: 'That email already has an account.', rate_limited: 'Too many tries. Wait a few minutes.' };
+$('alt').onclick = function () {
+  signup = !signup; $('inv').hidden = !signup;
+  $('go').textContent = signup ? 'Create account' : 'Sign in';
+  $('alt').textContent = signup ? 'Back to sign in' : 'I have an invite code';
+  $('pw').autocomplete = signup ? 'new-password' : 'current-password';
+};
+$('f').onsubmit = function (e) {
+  e.preventDefault(); $('msg').textContent = '';
+  fetch(signup ? '/api/signup' : '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: $('email').value, password: $('pw').value, invite: $('invite').value }) })
+  .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+  .then(function (x) { if (x[0]) location.href = '/'; else $('msg').textContent = copy[x[1].error] || 'Something went wrong. Try again.'; })
+  .catch(function () { $('msg').textContent = 'Couldn’t reach the server.'; });
+};
+</script></body></html>

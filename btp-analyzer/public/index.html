@@ -1,0 +1,2339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/shim.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Believe the Process Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F2F5F8;
+  --surface: #FFFFFF;
+  --surface-2: #E8EEF4;
+  --line: #CDD6E0;
+  --text: #14263D;
+  --muted: #55677B;
+  --brand: #1F4E79;
+  --brand-contrast: #FFFFFF;
+  --tape: #F2B01E;
+  --tick: #14263D;
+  --minor: #2A7551;
+  --minor-bg: #E3F2EA;
+  --moderate: #8F5A00;
+  --moderate-bg: #FBEFD3;
+  --major: #AE3226;
+  --major-bg: #FBE4E0;
+  --focus: #1F6FD1;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1824;
+    --surface: #16253A;
+    --surface-2: #1E3149;
+    --line: #2B4160;
+    --text: #E8EEF5;
+    --muted: #9DB0C5;
+    --brand: #7DB3E8;
+    --brand-contrast: #0E1824;
+    --minor: #6FD0A0;
+    --minor-bg: #173628;
+    --moderate: #F0BE5C;
+    --moderate-bg: #3A2D10;
+    --major: #FF9A8C;
+    --major-bg: #43201C;
+    --focus: #8DBBFF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1824;
+  --surface: #16253A;
+  --surface-2: #1E3149;
+  --line: #2B4160;
+  --text: #E8EEF5;
+  --muted: #9DB0C5;
+  --brand: #7DB3E8;
+  --brand-contrast: #0E1824;
+  --minor: #6FD0A0;
+  --minor-bg: #173628;
+  --moderate: #F0BE5C;
+  --moderate-bg: #3A2D10;
+  --major: #FF9A8C;
+  --major-bg: #43201C;
+  --focus: #8DBBFF;
+  color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+h1, h2, h3 {
+  font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: 0.005em;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.ruler {
+  height: 22px;
+  background-color: var(--tape);
+  background-image:
+    repeating-linear-gradient(90deg, var(--tick) 0 2px, transparent 2px 60px),
+    repeating-linear-gradient(90deg, var(--tick) 0 1px, transparent 1px 12px);
+  background-size: 100% 16px, 100% 8px;
+  background-position: 0 100%, 0 100%;
+  background-repeat: no-repeat;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 48px; }
+
+header { padding: 20px 0 12px; }
+.brandline { color: var(--muted); font-weight: 500; font-size: 15px; margin: 0 0 4px; }
+h1 { font-size: 40px; }
+.tagline { color: var(--muted); margin: 6px 0 0; max-width: 46ch; }
+
+.mode {
+  display: inline-flex;
+  margin-top: 16px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+.mode button {
+  border: 0;
+  background: transparent;
+  padding: 9px 18px;
+  min-height: 44px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--muted);
+}
+.mode button[aria-pressed="true"] {
+  background: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 16px;
+}
+.card h2 { font-size: 26px; margin-bottom: 12px; }
+
+.field { display: block; margin-bottom: 14px; }
+.field > span { display: block; font-weight: 600; font-size: 15px; margin-bottom: 5px; }
+.field small { color: var(--muted); font-weight: 400; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+input[type="text"], input[type="number"], select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.btn {
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.primary { background: var(--brand); color: var(--brand-contrast); border-color: var(--brand); width: 100%; font-size: 17px; }
+.btn.ghost { background: transparent; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn.small { min-height: 40px; padding: 8px 14px; font-size: 14px; }
+
+.photos-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 10px; }
+.photos-head span { color: var(--muted); font-size: 14px; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .num {
+  position: absolute; left: 6px; bottom: 6px;
+  background: rgba(20, 38, 61, 0.85); color: #fff;
+  font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 10px;
+}
+.thumb button {
+  position: absolute; top: 4px; right: 4px;
+  width: 32px; height: 32px; border-radius: 16px; border: 0;
+  background: rgba(20, 38, 61, 0.85); color: #fff; font-size: 18px; line-height: 1; cursor: pointer;
+}
+.empty { color: var(--muted); border: 1.5px dashed var(--line); border-radius: 10px; padding: 22px 14px; text-align: center; margin-bottom: 14px; }
+
+.notice { margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--moderate-bg); color: var(--text); border-left: 4px solid var(--tape); }
+.notice[hidden] { display: none; }
+.busy { display: none; margin-top: 12px; }
+.busy.on { display: block; }
+.bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin-bottom: 10px; }
+.bar i { display: block; height: 100%; width: 35%; background: var(--tape); animation: slide 1.4s ease-in-out infinite; }
+@keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; } }
+
+#summary { border-top: 6px solid var(--tape); }
+#summary h2 { margin-bottom: 4px; }
+.range { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; font-size: 44px; line-height: 1.05; margin: 6px 0; }
+.range span { font-size: 22px; color: var(--muted); font-weight: 600; }
+.sub { color: var(--muted); margin: 0 0 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip { padding: 5px 11px; border-radius: 16px; font-weight: 600; font-size: 14px; }
+.chip.major { background: var(--major-bg); color: var(--major); }
+.chip.moderate { background: var(--moderate-bg); color: var(--moderate); }
+.chip.minor { background: var(--minor-bg); color: var(--minor); }
+.contingency { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.contingency select { width: auto; min-height: 40px; }
+.budget { font-weight: 600; margin: 4px 0 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); }
+td.amt, th.amt { text-align: right; white-space: nowrap; }
+.note { color: var(--muted); font-size: 14px; margin: 10px 0 0; }
+
+.room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.room-head h2 { margin-bottom: 4px; }
+.cond { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+.cond.good { background: var(--minor-bg); color: var(--minor); }
+.cond.fair { background: var(--moderate-bg); color: var(--moderate); }
+.cond.poor { background: var(--major-bg); color: var(--major); }
+.strip { display: flex; gap: 6px; margin: 10px 0; overflow-x: auto; }
+.strip img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex: none; }
+.mats { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.mat { background: var(--surface-2); border-radius: 6px; padding: 4px 9px; font-size: 14px; }
+.mat b { font-weight: 600; }
+.mat em { font-style: normal; color: var(--muted); }
+
+.issue { border: 1px solid var(--line); border-left-width: 5px; border-radius: 8px; padding: 12px; margin-top: 10px; background: var(--bg); }
+.issue.major { border-left-color: var(--major); }
+.issue.moderate { border-left-color: var(--tape); }
+.issue.minor { border-left-color: var(--minor); }
+.issue.off { opacity: 0.55; }
+.issue-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.issue h3 { font-size: 21px; }
+.sev { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
+.sev.major { background: var(--major-bg); color: var(--major); }
+.sev.moderate { background: var(--moderate-bg); color: var(--moderate); }
+.sev.minor { background: var(--minor-bg); color: var(--minor); }
+.meta { color: var(--muted); font-size: 14px; margin: 2px 0 6px; }
+.issue p { margin: 4px 0; }
+.costline { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 10px; }
+.costline label { font-size: 13px; color: var(--muted); font-weight: 600; }
+.costline input[type="number"] { width: 112px; min-height: 42px; margin-top: 3px; }
+.costline .inc { display: flex; align-items: center; gap: 8px; min-height: 42px; margin-left: auto; }
+.costline .inc input { width: 22px; height: 22px; }
+.costline .inc span { font-size: 15px; color: var(--text); font-weight: 600; }
+.further { margin: 14px 0 0; padding-left: 20px; }
+.further li { margin: 3px 0; }
+.sub-h { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; font-size: 18px; margin: 14px 0 0; }
+
+footer { margin-top: 24px; color: var(--muted); font-size: 14px; }
+
+.overlay { position: fixed; inset: 0; background: rgba(8, 16, 28, 0.72); display: flex; align-items: center; justify-content: center; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 50; }
+.overlay[hidden] { display: none; }
+.dialog { background: var(--surface); border-radius: 14px; padding: 22px; max-width: 460px; width: 100%; border-top: 8px solid var(--tape); }
+.dialog h2 { font-size: 28px; margin-bottom: 10px; }
+.dialog p { margin: 0 0 12px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tabs { display: flex; gap: 4px; margin-top: 18px; border-bottom: 2px solid var(--line); overflow-x: auto; }
+.tabs button { flex: 0 0 auto; padding: 0 16px; white-space: nowrap; min-height: 48px; border: 0; background: transparent; font-weight: 600; font-size: 17px; color: var(--muted); cursor: pointer; border-bottom: 4px solid transparent; margin-bottom: -2px; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--tape); }
+
+.tiers { display: grid; gap: 10px; margin-top: 8px; }
+.tier { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; text-align: left; width: 100%; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; min-height: 64px; }
+.tier[aria-pressed="true"] { border-color: var(--brand); background: var(--surface-2); box-shadow: inset 5px 0 0 var(--tape); }
+.tier b { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 22px; font-weight: 700; }
+.tier .tr { font-weight: 700; text-align: right; align-self: center; }
+.tier .td { color: var(--muted); font-size: 14px; }
+.tier .tp { color: var(--muted); font-size: 14px; text-align: right; }
+
+#calcResult { border-top: 6px solid var(--tape); }
+#calcResult h2 { margin-bottom: 4px; }
+.crow { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.crow:first-child { padding-top: 0; }
+.crow-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+.crow-top .basis { color: var(--muted); font-size: 13px; margin-left: 6px; }
+.ctotal { font-weight: 600; white-space: nowrap; }
+.ctotal.dim { color: var(--muted); font-weight: 500; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { min-height: 44px; border: 0; background: transparent; border-radius: 8px; font-weight: 600; font-size: 15px; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--brand); color: var(--brand-contrast); }
+.cdesc { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.chint { margin: 8px 0 0; font-size: 14px; color: var(--moderate); background: var(--moderate-bg); padding: 4px 9px; border-radius: 6px; display: inline-block; }
+.adj { margin-top: 8px; }
+.adj summary { cursor: pointer; color: var(--brand); font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.scantoggle { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-weight: 600; }
+.scantoggle input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+textarea { width: 100%; min-height: 96px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical; font: inherit; color: inherit; }
+.doc { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg); }
+.doc b { display: block; word-break: break-word; font-weight: 600; }
+.doc span { color: var(--muted); font-size: 14px; }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.lookups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.lookups a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--brand); font-weight: 600; text-decoration: none; }
+.addrow { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 14px; }
+.comp { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; background: var(--bg); }
+.comp.off { opacity: 0.6; }
+.comp-top { display: flex; gap: 8px; margin-bottom: 10px; }
+.comp-top input { flex: 1; }
+.comp label.f { display: block; font-size: 13px; font-weight: 600; color: var(--muted); }
+.comp label.f input { margin-top: 3px; }
+.comp .meta { margin: 8px 0 0; }
+.comp .inc2 { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 600; }
+.comp .inc2 input { width: 22px; height: 22px; }
+#cmaResult { border-top: 6px solid var(--tape); }
+#cmaResult h2 { margin-bottom: 4px; }
+#docTotals { border-top: 6px solid var(--tape); }
+#docTotals h2 { margin-bottom: 4px; }
+.rep { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; background: var(--bg); }
+.rep h3 { font-size: 21px; }
+.rep .actions { display: flex; gap: 8px; margin-top: 10px; }
+.checkline { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; font-weight: 600; }
+.checkline input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+#sqftHint { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+#sqftHint[hidden] { display: none; }
+@media (max-width: 420px) { h1 { font-size: 34px; } .range { font-size: 38px; } }
+</style>
+</head>
+<body>
+<div class="ruler" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <p class="brandline">Believe the Process</p>
+    <h1>Photo Repair Estimator</h1>
+    <p class="tagline">Walk a property, snap photos of each room, and get a ballpark repair budget for what shows up.</p>
+    <div class="mode" role="group" aria-label="View mode">
+      <button type="button" data-act="mode" data-mode="buyer" aria-pressed="true">Buyer</button>
+      <button type="button" data-act="mode" data-mode="investor" aria-pressed="false">Investor</button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-scan" aria-selected="true" aria-controls="panel-scan" data-tab="scan">Scan rooms</button>
+    <button type="button" role="tab" id="tab-calc" aria-selected="false" aria-controls="panel-calc" data-tab="calc">Rehab calculator</button>
+    <button type="button" role="tab" id="tab-docs" aria-selected="false" aria-controls="panel-docs" data-tab="docs">Inspection reports</button>
+    <button type="button" role="tab" id="tab-cma" aria-selected="false" aria-controls="panel-cma" data-tab="cma">Quick CMA</button>
+    <button type="button" role="tab" id="tab-saved" aria-selected="false" aria-controls="panel-saved" data-tab="saved">Saved reports</button>
+  </div>
+
+  <div id="panel-scan" role="tabpanel" aria-labelledby="tab-scan">
+  <section class="card" aria-labelledby="scan-h">
+    <h2 id="scan-h">Scan a room</h2>
+    <label class="field">
+      <span>Property address <small>(optional, helps with local pricing)</small></span>
+      <input type="text" id="address" autocomplete="street-address" placeholder="123 Main St, San Jose, CA">
+    </label>
+    <div class="row">
+      <label class="field">
+        <span>Room</span>
+        <select id="roomType">
+          <option>Kitchen</option>
+          <option>Bathroom</option>
+          <option>Bedroom</option>
+          <option>Living room</option>
+          <option>Dining room</option>
+          <option>Hallway or stairs</option>
+          <option>Laundry room</option>
+          <option>Garage</option>
+          <option>Basement</option>
+          <option>Exterior</option>
+          <option>Roof</option>
+          <option>Backyard</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Size <small>(sq ft, optional)</small></span>
+        <input type="number" id="sqft" inputmode="numeric" min="0" placeholder="e.g. 150">
+      </label>
+    </div>
+
+    <div class="photos-head">
+      <strong>Photos</strong>
+      <span id="photoCount"></span>
+    </div>
+    <div id="thumbs"></div>
+    <input type="file" id="file" class="visually-hidden" accept="image/*" multiple tabindex="-1">
+    <div style="display:flex; gap:10px; margin-bottom:14px;">
+      <button type="button" class="btn" data-act="pick">Add photos</button>
+    </div>
+
+    <button type="button" class="btn primary" id="analyzeBtn" data-act="analyze" disabled>Analyze room</button>
+    <div class="busy" id="busy" role="status" aria-live="polite">
+      <div class="bar" aria-hidden="true"><i></i></div>
+      <span>Looking at your photos. This can take up to a minute.</span>
+      <button type="button" class="btn small ghost" data-act="stop" style="margin-left:8px;">Stop</button>
+    </div>
+    <p class="notice" id="notice" role="status" hidden></p>
+  </section>
+
+  <section class="card" id="summary" hidden aria-live="polite"></section>
+  <div id="rooms"></div>
+  </div>
+
+  <div id="panel-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+    <section class="card" aria-labelledby="calc-h">
+      <h2 id="calc-h">Rehab calculator</h2>
+      <p class="sub">Pick a rehab level for a quick number, then fine-tune each category. The two stay in sync.</p>
+      <div class="row">
+        <label class="field">
+          <span>Home size <small>(sq ft)</small></span>
+          <input type="number" id="calcSqft" inputmode="numeric" min="0" placeholder="e.g. 1600">
+        </label>
+        <label class="field">
+          <span>Bathrooms</span>
+          <input type="number" id="calcBaths" inputmode="numeric" min="0" value="2">
+        </label>
+      </div>
+      <p class="note" id="sqftHint" hidden></p>
+      <h3 class="sub-h">Quick estimate</h3>
+      <div class="tiers" id="tiers"></div>
+    </section>
+
+    <section class="card" id="calcResult" hidden aria-live="polite"></section>
+
+    <section class="card" aria-labelledby="line-h">
+      <h2 id="line-h">Line by line</h2>
+      <div id="calcDetail"></div>
+    </section>
+  </div>
+
+  <div id="panel-docs" role="tabpanel" aria-labelledby="tab-docs" hidden>
+    <section class="card" aria-labelledby="docs-h">
+      <h2 id="docs-h">Inspection and disclosure reports</h2>
+      <p class="sub">Add the inspection report and seller disclosures. The app pulls out the findings, prices them, and adjusts your budget. When a finding matches something you photographed, the report estimate replaces the photo estimate.</p>
+      <input type="file" id="docFile" class="visually-hidden" accept=".pdf,application/pdf,image/*,.txt,text/plain" multiple tabindex="-1">
+      <div class="addrow">
+        <button type="button" class="btn" data-doc-act="pick">Add files</button>
+      </div>
+      <label class="field">
+        <span>Or paste report text</span>
+        <textarea id="docPaste" rows="4" placeholder="Paste text from a report or disclosure"></textarea>
+      </label>
+      <div class="addrow">
+        <button type="button" class="btn small" data-doc-act="addPaste">Add pasted text</button>
+      </div>
+      <div id="docList"></div>
+      <button type="button" class="btn primary" id="docAnalyzeBtn" data-doc-act="analyze" disabled>Analyze documents</button>
+      <div class="busy" id="docBusy" role="status" aria-live="polite">
+        <div class="bar" aria-hidden="true"><i></i></div>
+        <span>Reading your documents. Long reports can take a couple of minutes.</span>
+        <button type="button" class="btn small ghost" data-doc-act="stop" style="margin-left:8px;">Stop</button>
+      </div>
+      <p class="notice" id="docNotice" role="status" hidden></p>
+    </section>
+    <section class="card" id="docTotals" hidden aria-live="polite"></section>
+    <div id="docFindings"></div>
+  </div>
+
+  <div id="panel-cma" role="tabpanel" aria-labelledby="tab-cma" hidden>
+    <section class="card" aria-labelledby="cma-h">
+      <h2 id="cma-h">Quick CMA</h2>
+      <p class="sub">Enter the property, add recent sold comps, and get a fast value range.</p>
+      <label class="field">
+        <span>Property address</span>
+        <input type="text" id="cmaAddress" autocomplete="street-address" placeholder="123 Main St, San Jose, CA">
+      </label>
+      <div class="row3">
+        <label class="field"><span>Beds</span><input type="number" id="cmaBeds" inputmode="decimal" min="0" placeholder="3"></label>
+        <label class="field"><span>Baths</span><input type="number" id="cmaBaths" inputmode="decimal" min="0" step="0.5" placeholder="2"></label>
+        <label class="field"><span>Sq ft</span><input type="number" id="cmaSqft" inputmode="numeric" min="0" placeholder="1600"></label>
+      </div>
+      <div class="addrow">
+        <button type="button" class="btn primary" id="dmBtn" style="width:auto; flex:1;" data-cma-act="dmComps">Get comps for this address</button>
+      </div>
+      <p class="note" id="dmHint" style="margin-top:0;">Pulls the closest sold comps from your DealMachine account. Include the ZIP code. Uses about 1 DealMachine credit per new address.</p>
+      <div class="busy" id="dmBusy" role="status" aria-live="polite">
+        <div class="bar" aria-hidden="true"><i></i></div>
+        <span>Finding comps.</span>
+      </div>
+      <p class="notice" id="dmNotice" role="status" hidden></p>
+      <div class="addrow" id="dmWiderRow" hidden>
+        <button type="button" class="btn small" data-cma-act="dmWider">Search wider (2 miles, all sales)</button>
+      </div>
+      <p class="sub" style="margin-bottom:6px;">Look up this address on a listing site:</p>
+      <div class="lookups" id="lookups"></div>
+    </section>
+
+    <section class="card" aria-labelledby="comps-h">
+      <h2 id="comps-h">Sold comps</h2>
+      <p class="sub">Copy comps from your MLS or a listing site, or upload screenshots. Claude reads them into the list below.</p>
+      <label class="field">
+        <span>Paste comps</span>
+        <textarea id="cmaPaste" rows="4" placeholder="Paste sold listings: address, sold price, sold date, sq ft, beds, baths"></textarea>
+      </label>
+      <input type="file" id="cmaFile" class="visually-hidden" accept="image/*" multiple tabindex="-1">
+      <div class="addrow">
+        <button type="button" class="btn small" data-cma-act="parsePaste">Read pasted comps</button>
+        <button type="button" class="btn small" data-cma-act="pickShots">Upload screenshots</button>
+        <button type="button" class="btn small ghost" data-cma-act="addBlank">Add one by hand</button>
+      </div>
+      <div class="busy" id="cmaBusy" role="status" aria-live="polite">
+        <div class="bar" aria-hidden="true"><i></i></div>
+        <span>Reading comps.</span>
+        <button type="button" class="btn small ghost" data-cma-act="stop" style="margin-left:8px;">Stop</button>
+      </div>
+      <p class="notice" id="cmaNotice" role="status" hidden></p>
+      <label class="field" style="margin-top:14px;">
+        <span>Comp window <small>(radius and how recently they sold)</small></span>
+        <select id="cmaWin"></select>
+      </label>
+      <label class="checkline"><input type="checkbox" id="cmaReno"><span>These comps are renovated or in better shape than this property</span></label>
+      <div id="compList"></div>
+    </section>
+
+    <section class="card" id="cmaResult" hidden aria-live="polite"></section>
+  </div>
+
+  <div id="panel-saved" role="tabpanel" aria-labelledby="tab-saved" hidden>
+    <section class="card" aria-labelledby="saved-h">
+      <h2 id="saved-h">Save this property</h2>
+      <p class="sub">Keeps the room scans, repair budget, report findings, and CMA together so you can come back to them.</p>
+      <label class="field">
+        <span>Report name</span>
+        <input type="text" id="repName" placeholder="123 Main St, San Jose">
+      </label>
+      <div class="addrow">
+        <button type="button" class="btn primary" style="width:auto; flex:1;" data-rep-act="save">Save report</button>
+        <button type="button" class="btn" data-rep-act="new">Start a new report</button>
+      </div>
+      <p class="notice" id="repNotice" role="status" hidden></p>
+    </section>
+    <section class="card" aria-labelledby="list-h">
+      <h2 id="list-h">Your reports</h2>
+      <div id="repList"></div>
+    </section>
+  </div>
+
+  <footer>
+    <p>These are ballpark estimates from photos. Costs vary by market, contractor, materials, and what is behind the walls. This is not an inspection, appraisal, or contractor bid.</p>
+  </footer>
+</div>
+
+<div class="overlay" id="disclaimer" role="dialog" aria-modal="true" aria-labelledby="disc-h" hidden>
+  <div class="dialog">
+    <h2 id="disc-h">Before you start</h2>
+    <p>This app gives you a good ballpark, not an exact number. Costs change with the market, the contractor, the materials, and what is hidden behind walls and floors.</p>
+    <p>Use it to get a feel for what kind of home you are getting into, then confirm with a licensed inspector and contractors before you make decisions.</p>
+    <button type="button" class="btn primary" data-act="accept">I understand</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var fmt = function (n) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+  };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var uid = function () { return Math.random().toString(36).slice(2, 9); };
+  var plural = function (n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); };
+  var num = function (v) {
+    var n = Number(String(v == null ? '' : v).replace(/[^0-9.]/g, ''));
+    return isFinite(n) && n > 0 ? Math.round(n) : 0;
+  };
+  var str = function (v) { return typeof v === 'string' ? v.trim() : ''; };
+
+  var SEV_ORDER = { major: 0, moderate: 1, minor: 2 };
+  var SEV_LABEL = { major: 'Major', moderate: 'Moderate', minor: 'Minor' };
+  var COND_LABEL = { good: 'Good condition', fair: 'Fair condition', poor: 'Poor condition' };
+
+  var state = {
+    mode: 'buyer',
+    contingency: 15,
+    pending: [],
+    rooms: [],
+    busy: false
+  };
+
+  var sample = null;
+  var imageLimits = null;
+  var ctl = null;
+  var aiReady = false;
+
+  /* ---------- Claude capability ---------- */
+  function initAI() {
+    var p;
+    try {
+      p = (window.claude && window.claude.use) ? window.claude.use('sample') : Promise.resolve(null);
+    } catch (e) { p = Promise.resolve(null); }
+    p.then(function (s) {
+      sample = s;
+      if (!s) { aiReady = true; updateAIState(); return; }
+      var lim;
+      try { lim = s.limits ? s.limits() : Promise.resolve({ images: { maxCount: 8 } }); }
+      catch (e) { lim = Promise.resolve({ images: { maxCount: 8 } }); }
+      return Promise.resolve(lim).then(function (l) {
+        imageLimits = (l && l.images) ? l.images : null;
+      }).catch(function () {
+        imageLimits = { maxCount: 8 };
+      }).then(function () { aiReady = true; updateAIState(); });
+    }).catch(function () { sample = null; aiReady = true; updateAIState(); });
+  }
+
+  function updateAIState() {
+    if (!aiReady) return;
+    if (!sample) {
+      setNotice('Photo analysis runs through Claude. Open this page in the Claude app or on claude.ai to use it.');
+    } else if (!imageLimits) {
+      setNotice('This view can’t send photos to Claude yet. Open the page in the Claude app or on claude.ai.');
+    }
+    renderPending();
+  }
+
+  /* ---------- Photos ---------- */
+  function readAsDataURL(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(src) {
+    return new Promise(function (res, rej) {
+      var i = new Image();
+      i.onload = function () { res(i); };
+      i.onerror = function () { rej(new Error('decode')); };
+      i.src = src;
+    });
+  }
+  function drawScaled(img, max) {
+    var s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    var w = Math.max(1, Math.round(img.naturalWidth * s));
+    var h = Math.max(1, Math.round(img.naturalHeight * s));
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return c;
+  }
+  function processImage(file) {
+    return readAsDataURL(file).then(loadImage).then(function (img) {
+      var big = drawScaled(img, 1400);
+      return new Promise(function (res, rej) {
+        big.toBlob(function (blob) {
+          if (!blob) { rej(new Error('encode')); return; }
+          res({ id: uid(), blob: blob, thumb: drawScaled(img, 220).toDataURL('image/jpeg', 0.7), mini: drawScaled(img, 96).toDataURL('image/jpeg', 0.5) });
+        }, 'image/jpeg', 0.82);
+      });
+    });
+  }
+  function maxPhotos() { return imageLimits && imageLimits.maxCount ? imageLimits.maxCount : 8; }
+
+  function addFiles(list) {
+    var files = Array.prototype.slice.call(list || []);
+    var chain = Promise.resolve();
+    files.forEach(function (f) {
+      chain = chain.then(function () {
+        if (state.pending.length >= maxPhotos()) {
+          setNotice('You can add up to ' + maxPhotos() + ' photos per room.');
+          return;
+        }
+        return processImage(f).then(function (p) { state.pending.push(p); renderPending(); })
+          .catch(function () { setNotice('One photo couldn’t be read. Try a JPG or PNG.'); });
+      });
+    });
+    chain.then(renderPending);
+  }
+
+  function renderPending() {
+    var box = $('#thumbs');
+    if (!state.pending.length) {
+      box.className = 'empty';
+      box.textContent = 'No photos yet. Add a few shots of the room: floors, walls, ceiling, and anything that looks off.';
+    } else {
+      box.className = 'thumbs';
+      box.innerHTML = state.pending.map(function (p, i) {
+        return '<div class="thumb"><img src="' + p.thumb + '" alt="Photo ' + (i + 1) + '">' +
+          '<span class="num">' + (i + 1) + '</span>' +
+          '<button type="button" data-act="removePending" data-id="' + p.id + '" aria-label="Remove photo ' + (i + 1) + '">×</button></div>';
+      }).join('');
+    }
+    $('#photoCount').textContent = state.pending.length + ' of ' + maxPhotos();
+    var ok = state.pending.length > 0 && !state.busy && sample && imageLimits;
+    $('#analyzeBtn').disabled = !ok;
+  }
+
+  /* ---------- Notices ---------- */
+  function setNotice(msg) {
+    var n = $('#notice');
+    if (!msg) { n.hidden = true; n.textContent = ''; return; }
+    n.hidden = false; n.textContent = msg;
+  }
+  function errCopy(code) {
+    switch (code) {
+      case 'cancelled': return '';
+      case 'not_granted': return 'Photo analysis wasn’t allowed for this page. Reload the page to be asked again.';
+      case 'rate_limited': return 'Too many requests right now. Wait a minute, then try again.';
+      case 'image_rejected': return 'One of the photos couldn’t be used. Remove it or try a different one.';
+      case 'refused': return 'Claude couldn’t analyze these photos. Try different shots of the room.';
+      case 'invalid_json':
+      case 'empty_completion': return 'The analysis didn’t come back in a usable form. Tap Analyze room to try again.';
+      case 'session_expired': return 'Your session expired. Sign in again, then retry.';
+      case 'daily_limit': return 'You’ve reached today’s analysis limit. It resets tomorrow.';
+      case 'upstream_error': return 'The analysis service didn’t respond. Try again in a moment.';
+      case 'images_unavailable':
+      case 'sampling_disabled':
+      case 'capability_disabled':
+      case 'capability_removed':
+      case 'not_declared': return 'Photo analysis isn’t available in this view. Open the page in the Claude app or on claude.ai.';
+      default: return 'Something went wrong during the analysis. Try again in a moment.';
+    }
+  }
+
+  /* ---------- Analysis ---------- */
+  function buildPrompt(label, sqft, n, address, mode) {
+    var buyer = mode === 'buyer';
+    return [
+      'You are a veteran San Francisco Bay Area home inspector and rehab estimator. Study the ' + n + ' attached photo(s) of a ' + label + (sqft ? ' (about ' + sqft + ' sq ft)' : '') + (address ? ' at ' + address : '') + '.',
+      'The photos are numbered 1 to ' + n + ' in the order attached.',
+      'Rules:',
+      '- Report only what is visible. Never invent hidden defects. Put anything that needs a closer look in "inspect_further".',
+      '- Identify the main finish materials you can see (flooring, walls, ceiling, counters, cabinets, fixtures, windows, doors, roofing, siding) and their condition.',
+      '- For each real problem, give a realistic low and high cost in US dollars for the Bay Area, labor and materials included, at current contractor pricing. If the room size is unknown, assume a typical size for this room type and say so in the summary.',
+      '- Do not label anything major unless it affects safety, structure, or water intrusion, or would cost over 5000 dollars to fix.',
+      '- Skip nitpicks that would cost under 100 dollars. List at most 12 issues.',
+      buyer ? 'Audience: a home buyer. Use plain, friendly language with no trade jargon.' : 'Audience: a real estate investor flipping the house. Write like a contractor scoping the job, with specific scope and trade terms.',
+      'Respond with JSON only. No markdown fences, no commentary. Use exactly this shape:',
+      '{"room_summary":"two sentences max","overall_condition":"good|fair|poor","materials":[{"item":"Flooring","material":"Luxury vinyl plank","condition":"good|fair|poor"}],"issues":[{"title":"short name","category":"Flooring|Paint|Drywall|Plumbing|Electrical|Roofing|Windows and doors|HVAC|Cabinets and counters|Fixtures|Exterior|Foundation|Pest and moisture|Other","severity":"minor|moderate|major","what_we_see":"one sentence","recommended_fix":"one sentence","cost_low":0,"cost_high":0,"confidence":"low|medium|high","photo":1}],"inspect_further":["short item"]}'
+    ].join('\n');
+  }
+
+  function normalize(d, label, sqft, thumbs) {
+    d = d && typeof d === 'object' ? d : {};
+    var cond = ['good', 'fair', 'poor'].indexOf(d.overall_condition) >= 0 ? d.overall_condition : 'fair';
+    var issues = (Array.isArray(d.issues) ? d.issues : []).map(function (it) {
+      var lo = num(it.cost_low), hi = num(it.cost_high);
+      if (hi < lo) { var t = lo; lo = hi; hi = t; }
+      return {
+        id: uid(),
+        title: str(it.title) || 'Issue',
+        category: str(it.category) || 'Other',
+        severity: SEV_ORDER[it.severity] != null ? it.severity : 'moderate',
+        see: str(it.what_we_see),
+        fix: str(it.recommended_fix),
+        confidence: ['low', 'medium', 'high'].indexOf(it.confidence) >= 0 ? it.confidence : 'medium',
+        photo: parseInt(it.photo, 10) || 0,
+        include: true,
+        low: lo,
+        high: hi
+      };
+    });
+    issues.sort(function (a, b) { return SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || b.high - a.high; });
+    return {
+      id: uid(),
+      label: label,
+      sqft: sqft,
+      thumbs: thumbs,
+      summary: str(d.room_summary),
+      condition: cond,
+      materials: (Array.isArray(d.materials) ? d.materials : []).map(function (m) {
+        return { item: str(m.item), material: str(m.material), condition: str(m.condition) };
+      }).filter(function (m) { return m.item || m.material; }),
+      issues: issues,
+      inspect: (Array.isArray(d.inspect_further) ? d.inspect_further : []).map(str).filter(Boolean)
+    };
+  }
+
+  function analyze() {
+    if (state.busy) return;
+    if (!sample || !imageLimits) { updateAIState(); return; }
+    if (!state.pending.length) { setNotice('Add at least one photo first.'); return; }
+    var label = $('#roomType').value;
+    var sqft = num($('#sqft').value);
+    var address = $('#address').value.trim();
+    var photos = state.pending.slice();
+    var prompt = buildPrompt(label, sqft, photos.length, address, state.mode);
+
+    setNotice('');
+    state.busy = true;
+    ctl = new AbortController();
+    setBusy(true);
+
+    sample.json(prompt, {
+      images: photos.map(function (p) { return p.blob; }),
+      signal: ctl.signal,
+      modelTier: 'default'
+    }).then(function (data) {
+      var room = normalize(data, label, sqft, photos.map(function (p) { return p.thumb; }));
+      room.minis = photos.map(function (p) { return p.mini; });
+      state.rooms.push(room);
+      state.pending = [];
+      $('#sqft').value = '';
+      if (!room.issues.length) {
+        setNotice('No clear problems showed up in those photos. Add more angles if something looked off to you.');
+      }
+      render();
+      var el = $('#summary');
+      if (el && el.scrollIntoView) {
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      }
+    }).catch(function (e) {
+      setNotice(errCopy(e && e.code));
+    }).then(function () {
+      state.busy = false;
+      ctl = null;
+      setBusy(false);
+      renderPending();
+    });
+  }
+
+  function setBusy(on) {
+    $('#busy').className = 'busy' + (on ? ' on' : '');
+    $('#analyzeBtn').disabled = on;
+    $('#analyzeBtn').textContent = on ? 'Analyzing…' : 'Analyze room';
+  }
+
+  /* ---------- Totals and rendering ---------- */
+  function totals() {
+    var lo = 0, hi = 0, count = 0;
+    var sev = { major: 0, moderate: 0, minor: 0 };
+    var cat = {};
+    state.rooms.forEach(function (r) {
+      r.issues.forEach(function (i) {
+        if (!i.include) return;
+        var l = Math.min(i.low, i.high), h = Math.max(i.low, i.high);
+        lo += l; hi += h; count++;
+        sev[i.severity]++;
+        if (!cat[i.category]) cat[i.category] = { lo: 0, hi: 0 };
+        cat[i.category].lo += l; cat[i.category].hi += h;
+      });
+    });
+    return { lo: lo, hi: hi, count: count, sev: sev, cat: cat };
+  }
+
+  function renderSummary() {
+    var el = $('#summary');
+    if (!state.rooms.length) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    var t = totals();
+    var buyer = state.mode === 'buyer';
+    var h = '<h2>' + (buyer ? 'Ballpark repair range' : 'Rehab estimate') + '</h2>';
+    h += '<p class="range">' + fmt(t.lo) + ' <span>to</span> ' + fmt(t.hi) + '</p>';
+    h += '<p class="sub">' + plural(state.rooms.filter(function (r) { return !r.docs; }).length, 'room') + ' scanned, ' + plural(t.count, 'item') + ' included.</p>';
+    h += '<div class="chips">';
+    ['major', 'moderate', 'minor'].forEach(function (k) {
+      if (t.sev[k]) h += '<span class="chip ' + k + '">' + t.sev[k] + ' ' + k + '</span>';
+    });
+    h += '</div>';
+    if (buyer) {
+      h += '<p class="note">Use this as a starting point for negotiating and for knowing what to ask your inspector. Switch off any item below you don’t expect to fix.</p>';
+    } else {
+      var c = state.contingency / 100;
+      h += '<div class="contingency"><label for="contSel"><strong>Contingency</strong></label>' +
+        '<select id="contSel" data-field="contingency">' +
+        [0, 10, 15, 20, 25].map(function (v) {
+          return '<option value="' + v + '"' + (v === state.contingency ? ' selected' : '') + '>' + v + '%</option>';
+        }).join('') + '</select></div>';
+      h += '<p class="budget">Budget with contingency: ' + fmt(Math.round(t.lo * (1 + c))) + ' to ' + fmt(Math.round(t.hi * (1 + c))) + '</p>';
+      var cats = Object.keys(t.cat).sort(function (a, b) { return t.cat[b].hi - t.cat[a].hi; });
+      if (cats.length) {
+        h += '<table><thead><tr><th>Category</th><th class="amt">Low</th><th class="amt">High</th></tr></thead><tbody>' +
+          cats.map(function (k) {
+            return '<tr><td>' + esc(k) + '</td><td class="amt">' + fmt(t.cat[k].lo) + '</td><td class="amt">' + fmt(t.cat[k].hi) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+    }
+    el.innerHTML = h;
+    if (typeof renderDocTotals === 'function') renderDocTotals();
+  }
+
+  function issueHTML(r, i) {
+    return '<article class="issue ' + i.severity + (i.include ? '' : ' off') + '" data-issue-card="' + i.id + '">' +
+      '<div class="issue-top"><h3>' + esc(i.title) + '</h3><span class="sev ' + i.severity + '">' + SEV_LABEL[i.severity] + '</span></div>' +
+      '<p class="meta">' + esc(i.category) + (i.src ? ', ' + esc(i.src) : (i.photo ? ', see photo ' + i.photo : '') + ', ' + esc(i.confidence) + ' confidence') + '</p>' +
+      (i.note ? '<p class="chint">' + esc(i.note) + '</p>' : '') +
+      (i.see ? '<p>' + esc(i.see) + '</p>' : '') +
+      (i.fix ? '<p><strong>Fix:</strong> ' + esc(i.fix) + '</p>' : '') +
+      '<div class="costline">' +
+      '<div><label for="lo-' + i.id + '">Low ($)</label><br><input type="number" inputmode="numeric" min="0" id="lo-' + i.id + '" value="' + i.low + '" data-field="low" data-room="' + r.id + '" data-issue="' + i.id + '"></div>' +
+      '<div><label for="hi-' + i.id + '">High ($)</label><br><input type="number" inputmode="numeric" min="0" id="hi-' + i.id + '" value="' + i.high + '" data-field="high" data-room="' + r.id + '" data-issue="' + i.id + '"></div>' +
+      '<label class="inc"><input type="checkbox" data-field="include" data-room="' + r.id + '" data-issue="' + i.id + '"' + (i.include ? ' checked' : '') + '><span>Include</span></label>' +
+      '</div></article>';
+  }
+
+  function renderRooms() {
+    function roomHTML(r) {
+      var h = '<section class="card" data-room-card="' + r.id + '">';
+      h += '<div class="room-head"><div><h2>' + esc(r.label) + '</h2>' +
+        (r.docs ? '' : '<span class="cond ' + r.condition + '">' + COND_LABEL[r.condition] + '</span>') +
+        (r.sqft ? ' <span class="meta">about ' + r.sqft + ' sq ft</span>' : '') + '</div>' +
+        '<button type="button" class="btn small ghost" data-act="removeRoom" data-id="' + r.id + '">Remove</button></div>';
+      if (r.thumbs.length) {
+        h += '<div class="strip">' + r.thumbs.map(function (t, k) { return '<img src="' + t + '" alt="Photo ' + (k + 1) + ' of ' + esc(r.label) + '">'; }).join('') + '</div>';
+      }
+      if (r.summary) h += '<p>' + esc(r.summary) + '</p>';
+      if (r.risks && r.risks.length) {
+        h += '<p class="sub-h">Biggest risks</p><ul class="further">' + r.risks.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      }
+      if (r.materials.length) {
+        h += '<div class="mats">' + r.materials.map(function (m) {
+          return '<span class="mat"><b>' + esc(m.item) + ':</b> ' + esc(m.material) + (m.condition ? ' <em>(' + esc(m.condition) + ')</em>' : '') + '</span>';
+        }).join('') + '</div>';
+      }
+      if (r.issues.length) {
+        h += '<p class="sub-h">What needs attention</p>' + r.issues.map(function (i) { return issueHTML(r, i); }).join('');
+      }
+      if (r.inspect.length) {
+        h += '<p class="sub-h">' + (r.docs ? 'Questions to ask the seller' : 'Worth a closer look') + '</p><ul class="further">' + r.inspect.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      }
+      return h + '</section>';
+    }
+    $('#rooms').innerHTML = state.rooms.filter(function (r) { return !r.docs; }).map(roomHTML).join('');
+    var df = $('#docFindings');
+    if (df) df.innerHTML = state.rooms.filter(function (r) { return r.docs; }).map(roomHTML).join('');
+  }
+
+  function renderMode() {
+    document.querySelectorAll('[data-act="mode"]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-mode') === state.mode ? 'true' : 'false');
+    });
+  }
+  function render() { renderMode(); renderSummary(); renderRooms(); renderPending(); renderCalc(); renderDocs(); updateCmaResult(); }
+
+  function findIssue(roomId, issueId) {
+    for (var a = 0; a < state.rooms.length; a++) {
+      if (state.rooms[a].id !== roomId) continue;
+      for (var b = 0; b < state.rooms[a].issues.length; b++) {
+        if (state.rooms[a].issues[b].id === issueId) return state.rooms[a].issues[b];
+      }
+    }
+    return null;
+  }
+
+  /* ---------- Events ---------- */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-act');
+    if (act === 'mode') { state.mode = b.getAttribute('data-mode'); render(); }
+    else if (act === 'pick') { $('#file').click(); }
+    else if (act === 'removePending') {
+      var id = b.getAttribute('data-id');
+      state.pending = state.pending.filter(function (p) { return p.id !== id; });
+      renderPending();
+    }
+    else if (act === 'analyze') { analyze(); }
+    else if (act === 'stop') { if (ctl) ctl.abort(); }
+    else if (act === 'removeRoom') {
+      var rid = b.getAttribute('data-id');
+      restoreSuperseded(rid);
+      state.rooms = state.rooms.filter(function (r) { return r.id !== rid; });
+      render();
+    }
+    else if (act === 'accept') {
+      $('#disclaimer').hidden = true;
+      try { localStorage.setItem('btp-analyzer-accepted', '1'); } catch (err) { /* storage unavailable */ }
+    }
+  });
+
+  $('#file').addEventListener('change', function (e) {
+    addFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    var f = t.getAttribute && t.getAttribute('data-field');
+    if (f === 'low' || f === 'high') {
+      var i = findIssue(t.getAttribute('data-room'), t.getAttribute('data-issue'));
+      if (i) { i[f] = num(t.value); renderSummary(); }
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    var f = t.getAttribute && t.getAttribute('data-field');
+    if (!f) return;
+    if (f === 'contingency') { state.contingency = parseInt(t.value, 10) || 0; renderSummary(); return; }
+    var i = findIssue(t.getAttribute('data-room'), t.getAttribute('data-issue'));
+    if (!i) return;
+    if (f === 'include') {
+      i.include = t.checked;
+      var card = t.closest('.issue');
+      if (card) card.classList.toggle('off', !i.include);
+      renderSummary();
+    } else if (f === 'low' || f === 'high') {
+      if (i.low > i.high) {
+        var tmp = i.low; i.low = i.high; i.high = tmp;
+        var lo = document.getElementById('lo-' + i.id), hi = document.getElementById('hi-' + i.id);
+        if (lo) lo.value = i.low;
+        if (hi) hi.value = i.high;
+      }
+      renderSummary();
+    }
+  });
+
+  /* ---------- Rehab calculator ---------- */
+  var LEVELS = [['skip', 'Skip'], ['light', 'Light'], ['medium', 'Medium'], ['full', 'Full']];
+  var TIER_INFO = {
+    light: { name: 'Light rehab', desc: 'Cosmetic refresh: paint, flooring, fixtures.' },
+    medium: { name: 'Medium rehab', desc: 'Updated kitchen and baths, plus system touch-ups.' },
+    full: { name: 'Full rehab', desc: 'Major remodel: systems, kitchen, baths, exterior.' }
+  };
+  var BASIS_LABEL = { sqft: 'per sq ft', bath: 'per bathroom', flat: 'flat' };
+
+  var CATS = [
+    { id: 'demo', name: 'Demo and haul-off', basis: 'sqft', light: [0.5, 1.5], medium: [1.5, 3.5], full: [4, 8],
+      desc: { light: 'Debris removal and dumpsters.', medium: 'Removing old flooring, fixtures, and some walls.', full: 'Heavy demo down to the studs in key areas.' } },
+    { id: 'paint', name: 'Paint and drywall', basis: 'sqft', light: [3, 5], medium: [4.5, 7], full: [6, 10],
+      desc: { light: 'Interior repaint with minor patching.', medium: 'Repaint with ceilings and trim, plus drywall repairs.', full: 'Drywall replacement, texture, and full paint.' } },
+    { id: 'flooring', name: 'Flooring', basis: 'sqft', light: [4, 7], medium: [8, 12], full: [12, 20],
+      desc: { light: 'Vinyl plank or carpet in the worn areas.', medium: 'New luxury vinyl plank or refinished hardwood throughout.', full: 'New hardwood or tile throughout.' } },
+    { id: 'kitchen', name: 'Kitchen', basis: 'flat', light: [5000, 12000], medium: [20000, 40000], full: [50000, 90000],
+      desc: { light: 'Paint or reface cabinets, new counters and hardware.', medium: 'New cabinets, counters, and appliances in the same layout.', full: 'Full remodel, possibly with layout changes.' } },
+    { id: 'baths', name: 'Bathrooms', basis: 'bath', light: [2500, 5000], medium: [8000, 15000], full: [18000, 35000],
+      desc: { light: 'Vanity, fixtures, regrout and caulk.', medium: 'New tub or shower, tile, vanity, and fixtures.', full: 'Full gut with new plumbing layout.' } },
+    { id: 'electrical', name: 'Electrical', basis: 'sqft', light: [0.5, 1.5], medium: [2, 4], full: [6, 12],
+      desc: { light: 'Fixtures, switches, and outlets.', medium: 'Partial updates and recessed lighting.', full: 'Panel upgrade and rewiring.' } },
+    { id: 'plumbing', name: 'Plumbing', basis: 'sqft', light: [0.5, 1.5], medium: [2, 4], full: [5, 10],
+      desc: { light: 'Fix leaks, replace valves and faucets.', medium: 'Water heater and fixture replacements.', full: 'Repipe and drain line replacement.' } },
+    { id: 'hvac', name: 'Heating and cooling', basis: 'flat', light: [0, 1500], medium: [5000, 9000], full: [12000, 22000],
+      desc: { light: 'Service, filters, and small repairs.', medium: 'Replace the furnace or AC unit.', full: 'New system with ductwork.' } },
+    { id: 'windows', name: 'Windows and doors', basis: 'sqft', light: [0.5, 1.5], medium: [3, 6], full: [8, 14],
+      desc: { light: 'Repair and reseal, replace hardware.', medium: 'Replace some windows and exterior doors.', full: 'Replace all windows and doors.' } },
+    { id: 'roof', name: 'Roof', basis: 'flat', light: [0, 1500], medium: [5000, 12000], full: [18000, 35000],
+      desc: { light: 'Patch and seal.', medium: 'Partial replacement or overlay.', full: 'Full tear-off and replacement.' } },
+    { id: 'exterior', name: 'Exterior and landscaping', basis: 'flat', light: [1500, 4000], medium: [6000, 14000], full: [15000, 35000],
+      desc: { light: 'Pressure wash, touch-up paint, tidy the yard.', medium: 'Exterior paint, fencing, and landscaping refresh.', full: 'New siding, driveway, and full landscape.' } },
+    { id: 'structure', name: 'Foundation, structural, and moisture', basis: 'flat', light: [0, 2000], medium: [3000, 10000], full: [15000, 50000],
+      desc: { light: 'Minor cracks, moisture, or pest repairs.', medium: 'Targeted foundation, drainage, or termite work.', full: 'Major foundation or framing repairs.' } },
+    { id: 'misc', name: 'Permits, design, and misc', basis: 'sqft', light: [0.5, 1], medium: [1.5, 3], full: [3, 6],
+      desc: { light: 'Basic permits and cleanup.', medium: 'Permits, plans, and final cleaning.', full: 'Full permits, engineering, and design.' } }
+  ];
+
+  var SCAN_MAP = {
+    'Flooring': 'flooring', 'Paint': 'paint', 'Drywall': 'paint', 'Plumbing': 'plumbing', 'Electrical': 'electrical',
+    'Roofing': 'roof', 'Windows and doors': 'windows', 'HVAC': 'hvac', 'Cabinets and counters': 'kitchen',
+    'Fixtures': 'misc', 'Exterior': 'exterior', 'Foundation': 'structure', 'Pest and moisture': 'structure', 'Other': 'misc'
+  };
+
+  var calc = { sqft: 0, baths: 2, scan: false, levels: {}, ov: {} };
+  CATS.forEach(function (c) { calc.levels[c.id] = 'skip'; });
+
+  function qty(c) { return c.basis === 'sqft' ? calc.sqft : (c.basis === 'bath' ? calc.baths : 1); }
+  function rateTotal(c, level) {
+    var r = c[level];
+    if (!r) return { lo: 0, hi: 0 };
+    var q = qty(c);
+    return { lo: Math.round(r[0] * q), hi: Math.round(r[1] * q) };
+  }
+  function catTotal(c) {
+    var lv = calc.levels[c.id];
+    if (lv === 'skip') return { lo: 0, hi: 0 };
+    var o = calc.ov[c.id];
+    return o ? { lo: o.lo, hi: o.hi } : rateTotal(c, lv);
+  }
+  function currentTier() {
+    var first = null, same = true, any = false;
+    CATS.forEach(function (c) {
+      var lv = calc.levels[c.id];
+      if (first === null) first = lv;
+      if (lv !== first) same = false;
+      if (lv !== 'skip') any = true;
+    });
+    if (!any) return 'none';
+    if (same && !Object.keys(calc.ov).length) return first;
+    return 'custom';
+  }
+  function scanByCat() {
+    var by = {}, lo = 0, hi = 0;
+    state.rooms.forEach(function (r) {
+      r.issues.forEach(function (i) {
+        if (!i.include) return;
+        var id = SCAN_MAP[i.category] || 'misc';
+        var l = Math.min(i.low, i.high), h = Math.max(i.low, i.high);
+        if (!by[id]) by[id] = { lo: 0, hi: 0 };
+        by[id].lo += l; by[id].hi += h; lo += l; hi += h;
+      });
+    });
+    return { by: by, lo: lo, hi: hi };
+  }
+  function calcTotals() {
+    var lo = 0, hi = 0;
+    CATS.forEach(function (c) { var t = catTotal(c); lo += t.lo; hi += t.hi; });
+    var sc = scanByCat();
+    var sLo = calc.scan ? sc.lo : 0, sHi = calc.scan ? sc.hi : 0;
+    var bLo = lo + sLo, bHi = hi + sHi, k = 1 + state.contingency / 100;
+    return { scopeLo: lo, scopeHi: hi, scanLo: sLo, scanHi: sHi, baseLo: bLo, baseHi: bHi,
+      totLo: Math.round(bLo * k), totHi: Math.round(bHi * k) };
+  }
+
+  function renderTiers() {
+    var cur = currentTier();
+    var ok = calc.sqft > 0;
+    $('#tiers').innerHTML = ['light', 'medium', 'full'].map(function (k) {
+      var lo = 0, hi = 0;
+      CATS.forEach(function (c) { var t = rateTotal(c, k); lo += t.lo; hi += t.hi; });
+      var info = TIER_INFO[k];
+      return '<button type="button" class="tier" data-calc-act="tier" data-level="' + k + '" aria-pressed="' + (cur === k) + '">' +
+        '<b>' + info.name + '</b>' +
+        '<span class="tr">' + (ok ? fmt(lo) + ' to ' + fmt(hi) : 'Add size') + '</span>' +
+        '<span class="td">' + info.desc + '</span>' +
+        '<span class="tp">' + (ok ? fmt(Math.round(lo / calc.sqft)) + ' to ' + fmt(Math.round(hi / calc.sqft)) + ' per sq ft' : 'Enter home size above') + '</span>' +
+        '</button>';
+    }).join('') + (cur === 'custom' ? '<p class="note">Custom scope: your category choices below don’t match a single level.</p>' : '');
+  }
+
+  function calcRow(label, a, b) {
+    return '<tr><td>' + esc(label) + '</td><td class="amt">' + fmt(a) + '</td><td class="amt">' + fmt(b) + '</td></tr>';
+  }
+
+  function renderCalcResult() {
+    var el = $('#calcResult');
+    var t = calcTotals();
+    if (!t.baseHi) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    var h = '<h2>Rehab budget</h2><p class="range">' + fmt(t.baseLo) + ' <span>to</span> ' + fmt(t.baseHi) + '</p>';
+    if (calc.sqft > 0) {
+      h += '<p class="sub">About ' + fmt(Math.round(t.baseLo / calc.sqft)) + ' to ' + fmt(Math.round(t.baseHi / calc.sqft)) + ' per sq ft before contingency.</p>';
+    }
+    h += '<table><thead><tr><th>Item</th><th class="amt">Low</th><th class="amt">High</th></tr></thead><tbody>';
+    h += calcRow('Scope you picked', t.scopeLo, t.scopeHi);
+    if (calc.scan) h += calcRow('Scanner findings', t.scanLo, t.scanHi);
+    h += calcRow('Contingency (' + state.contingency + '%)', t.totLo - t.baseLo, t.totHi - t.baseHi);
+    h += '<tr><td><strong>Total budget</strong></td><td class="amt"><strong>' + fmt(t.totLo) + '</strong></td><td class="amt"><strong>' + fmt(t.totHi) + '</strong></td></tr>';
+    h += '</tbody></table>';
+    h += '<div class="contingency"><label for="calcCont"><strong>Contingency</strong></label><select id="calcCont" data-calc-field="contingency">' +
+      [0, 10, 15, 20, 25].map(function (v) {
+        return '<option value="' + v + '"' + (v === state.contingency ? ' selected' : '') + '>' + v + '%</option>';
+      }).join('') + '</select></div>';
+    h += '<p class="note">Starting rates are Bay Area ballparks. Adjust any category to match your contractors’ bids.</p>';
+    el.innerHTML = h;
+  }
+
+  function renderCalcDetail() {
+    var sc = scanByCat();
+    var h = '';
+    CATS.forEach(function (c) {
+      var lv = calc.levels[c.id];
+      var t = catTotal(c);
+      h += '<div class="crow">';
+      h += '<div class="crow-top"><span><strong>' + esc(c.name) + '</strong><span class="basis">' + BASIS_LABEL[c.basis] + '</span></span><span class="ctotal" id="ct-' + c.id + '"></span></div>';
+      h += '<div class="seg" role="group" aria-label="' + esc(c.name) + ' scope">' + LEVELS.map(function (l) {
+        return '<button type="button" data-calc-act="level" data-cat="' + c.id + '" data-level="' + l[0] + '" aria-pressed="' + (lv === l[0]) + '">' + l[1] + '</button>';
+      }).join('') + '</div>';
+      if (lv !== 'skip') h += '<p class="cdesc">' + esc(c.desc[lv]) + '</p>';
+      if (sc.by[c.id]) h += '<p class="chint">Scanner flagged ' + fmt(sc.by[c.id].lo) + ' to ' + fmt(sc.by[c.id].hi) + ' here.</p>';
+      if (lv !== 'skip') {
+        h += '<details class="adj"><summary>Adjust amount</summary><div class="costline">' +
+          '<div><label for="ovlo-' + c.id + '">Low ($)</label><br><input type="number" inputmode="numeric" min="0" id="ovlo-' + c.id + '" data-calc-field="ovlo" data-cat="' + c.id + '" value="' + t.lo + '"></div>' +
+          '<div><label for="ovhi-' + c.id + '">High ($)</label><br><input type="number" inputmode="numeric" min="0" id="ovhi-' + c.id + '" data-calc-field="ovhi" data-cat="' + c.id + '" value="' + t.hi + '"></div>' +
+          '</div></details>';
+      }
+      h += '</div>';
+    });
+    if (sc.hi > 0) {
+      h += '<label class="scantoggle"><input type="checkbox" data-calc-field="scan"' + (calc.scan ? ' checked' : '') + '><span>Also add scanner findings on top (' + fmt(sc.lo) + ' to ' + fmt(sc.hi) + ')</span></label>';
+      h += '<p class="note">Scanner items can overlap with the scope above. Leave this off if the categories already cover those repairs.</p>';
+    } else {
+      h += '<p class="note">Scan rooms on the first tab, and anything the photos flag will show up here next to the matching category.</p>';
+    }
+    $('#calcDetail').innerHTML = h;
+  }
+
+  function updateRowTotals() {
+    CATS.forEach(function (c) {
+      var el = document.getElementById('ct-' + c.id);
+      if (!el) return;
+      var lv = calc.levels[c.id];
+      if (lv === 'skip') { el.textContent = 'Skipped'; el.className = 'ctotal dim'; return; }
+      var t = catTotal(c);
+      el.textContent = fmt(t.lo) + ' to ' + fmt(t.hi);
+      el.className = 'ctotal';
+      if (!calc.ov[c.id]) {
+        var a = document.getElementById('ovlo-' + c.id), b = document.getElementById('ovhi-' + c.id);
+        if (a) a.value = t.lo;
+        if (b) b.value = t.hi;
+      }
+    });
+  }
+
+  function updateSqftHint() {
+    var el = $('#sqftHint');
+    var s = 0;
+    state.rooms.forEach(function (r) { s += r.sqft || 0; });
+    if (!calc.sqft && s > 0) {
+      el.hidden = false;
+      el.innerHTML = '<span>Your scanned rooms add up to ' + s + ' sq ft.</span> <button type="button" class="btn small" data-calc-act="useScanSqft" data-sqft="' + s + '">Use ' + s + '</button>';
+    } else {
+      el.hidden = true;
+      el.innerHTML = '';
+    }
+  }
+
+  function updateCalcTotals() {
+    renderTiers();
+    renderCalcResult();
+    updateRowTotals();
+    updateSqftHint();
+  }
+  function renderCalc() { renderCalcDetail(); updateCalcTotals(); }
+
+  var PANELS = ['scan', 'calc', 'docs', 'cma', 'saved'];
+  function showTab(name) {
+    PANELS.forEach(function (p) {
+      var on = p === name;
+      $('#panel-' + p).hidden = !on;
+      $('#tab-' + p).setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (name === 'calc') renderCalc();
+    else if (name === 'docs') renderDocs();
+    else if (name === 'cma') enterCma();
+    else if (name === 'saved') enterSaved();
+  }
+
+  document.addEventListener('click', function (e) {
+    var tb = e.target.closest('[data-tab]');
+    if (tb) { showTab(tb.getAttribute('data-tab')); return; }
+    var b = e.target.closest('[data-calc-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-calc-act');
+    if (act === 'tier') {
+      var lv = b.getAttribute('data-level');
+      CATS.forEach(function (c) { calc.levels[c.id] = lv; });
+      calc.ov = {};
+      renderCalcDetail();
+      updateCalcTotals();
+    } else if (act === 'level') {
+      var id = b.getAttribute('data-cat');
+      calc.levels[id] = b.getAttribute('data-level');
+      delete calc.ov[id];
+      renderCalcDetail();
+      updateCalcTotals();
+    } else if (act === 'useScanSqft') {
+      calc.sqft = num(b.getAttribute('data-sqft'));
+      $('#calcSqft').value = calc.sqft;
+      updateCalcTotals();
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    var f = t.getAttribute && t.getAttribute('data-calc-field');
+    if (t.id === 'calcSqft') { calc.sqft = num(t.value); updateCalcTotals(); }
+    else if (t.id === 'calcBaths') { calc.baths = num(t.value); updateCalcTotals(); }
+    else if (f === 'ovlo' || f === 'ovhi') {
+      var id = t.getAttribute('data-cat');
+      calc.ov[id] = {
+        lo: num(document.getElementById('ovlo-' + id).value),
+        hi: num(document.getElementById('ovhi-' + id).value)
+      };
+      updateCalcTotals();
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    var f = t.getAttribute && t.getAttribute('data-calc-field');
+    if (!f) return;
+    if (f === 'contingency') {
+      state.contingency = parseInt(t.value, 10) || 0;
+      updateCalcTotals();
+      renderSummary();
+    } else if (f === 'scan') {
+      calc.scan = t.checked;
+      updateCalcTotals();
+    } else if (f === 'ovlo' || f === 'ovhi') {
+      var id = t.getAttribute('data-cat');
+      var o = calc.ov[id];
+      if (o && o.lo > o.hi) {
+        var x = o.lo; o.lo = o.hi; o.hi = x;
+        document.getElementById('ovlo-' + id).value = o.lo;
+        document.getElementById('ovhi-' + id).value = o.hi;
+      }
+      updateCalcTotals();
+    }
+  });
+
+  /* ---------- Shared helpers for the newer tabs ---------- */
+  var aiCtl = null;
+  function noteTo(sel, msg) {
+    var n = $(sel);
+    if (!n) return;
+    if (!msg) { n.hidden = true; n.textContent = ''; } else { n.hidden = false; n.textContent = msg; }
+  }
+  function setBar(sel, on) { var b = $(sel); if (b) b.className = 'busy' + (on ? ' on' : ''); }
+  function runJSON(prompt, images) {
+    aiCtl = new AbortController();
+    var o = { signal: aiCtl.signal, modelTier: 'default' };
+    if (images && images.length) o.images = images;
+    return sample.json(prompt, o);
+  }
+  function readAsArrayBuffer(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  function readAsText(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result || '')); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsText(file);
+    });
+  }
+
+  /* ---------- Inspection and disclosure reports ---------- */
+  var WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var docBusy = false;
+  state.docs = [];
+
+  function pageToBlob(pg) {
+    var v0 = pg.getViewport({ scale: 1 });
+    var sc = Math.min(2, 1300 / Math.max(v0.width, 1));
+    var vp = pg.getViewport({ scale: sc });
+    var c = document.createElement('canvas');
+    c.width = Math.round(vp.width);
+    c.height = Math.round(vp.height);
+    return pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
+      return new Promise(function (res, rej) {
+        c.toBlob(function (b) { if (b) res(b); else rej(new Error('encode')); }, 'image/jpeg', 0.8);
+      });
+    });
+  }
+
+  function readPdf(file) {
+    if (!window.pdfjsLib) return Promise.reject(new Error('nopdf'));
+    try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL; } catch (e) { /* ignore */ }
+    return readAsArrayBuffer(file).then(function (buf) {
+      return window.pdfjsLib.getDocument({ data: buf }).promise;
+    }).then(function (pdf) {
+      var n = pdf.numPages, parts = [], chars = 0, idx = [];
+      for (var i = 1; i <= n; i++) idx.push(i);
+      return idx.reduce(function (chain, i) {
+        return chain.then(function () {
+          return pdf.getPage(i).then(function (pg) { return pg.getTextContent(); }).then(function (tc) {
+            var s = tc.items.map(function (it) { return it.str; }).join(' ').replace(/\s+/g, ' ').trim();
+            chars += s.length;
+            parts.push('[Page ' + i + '] ' + s);
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        var doc = { id: uid(), name: file.name || 'Document.pdf', kind: 'pdf', pages: n, text: parts.join('\n'), chars: chars, images: [], scanned: false };
+        if (chars < 40 * n) {
+          doc.scanned = true;
+          doc.text = '';
+          var cap = Math.min(n, 10, maxPhotos()), pidx = [];
+          for (var k = 1; k <= cap; k++) pidx.push(k);
+          return pidx.reduce(function (ch, k) {
+            return ch.then(function () {
+              return pdf.getPage(k).then(pageToBlob).then(function (b) { doc.images.push(b); });
+            });
+          }, Promise.resolve()).then(function () { return doc; });
+        }
+        return doc;
+      });
+    });
+  }
+
+  function readDocFile(file) {
+    var name = file.name || 'Document';
+    if (/\.pdf$/i.test(name) || file.type === 'application/pdf') return readPdf(file);
+    if (/^image\//.test(file.type)) {
+      return processImage(file).then(function (p) {
+        return { id: uid(), name: name, kind: 'image', pages: 1, text: '', chars: 0, images: [p.blob], scanned: false };
+      });
+    }
+    return readAsText(file).then(function (t) {
+      return { id: uid(), name: name, kind: 'text', pages: 1, text: t, chars: t.length, images: [], scanned: false };
+    });
+  }
+
+  function addDocFiles(list) {
+    var files = Array.prototype.slice.call(list || []);
+    var chain = Promise.resolve();
+    files.forEach(function (f) {
+      chain = chain.then(function () {
+        if (f.size > 30 * 1024 * 1024) { noteTo('#docNotice', f.name + ' is over 30 MB. Try a smaller file or paste the text.'); return; }
+        noteTo('#docNotice', 'Reading ' + f.name + '…');
+        return readDocFile(f).then(function (d) {
+          state.docs.push(d);
+          noteTo('#docNotice', '');
+          renderDocs();
+        }).catch(function (e) {
+          noteTo('#docNotice', (e && e.message === 'nopdf')
+            ? 'PDF reading isn’t available in this view. Paste the report text instead, or upload photos of the pages.'
+            : 'Couldn’t read ' + f.name + '. Try another file or paste the text.');
+        });
+      });
+    });
+  }
+
+  function renderDocs() {
+    var list = $('#docList');
+    if (!list) return;
+    if (!state.docs.length) {
+      list.innerHTML = '<p class="note">No documents yet.</p>';
+    } else {
+      list.innerHTML = state.docs.map(function (d) {
+        var meta;
+        if (d.kind === 'pdf') meta = plural(d.pages, 'page') + (d.scanned ? ', scanned, reading the first ' + d.images.length : ', about ' + Math.max(1, Math.round(d.chars / 1000)) + 'k characters');
+        else if (d.kind === 'image') meta = 'Photo of a page';
+        else meta = 'About ' + Math.max(1, Math.round(d.text.length / 1000)) + 'k characters';
+        return '<div class="doc"><div><b>' + esc(d.name) + '</b><span>' + esc(meta) + '</span></div>' +
+          '<button type="button" class="btn small ghost" data-doc-act="remove" data-id="' + d.id + '" aria-label="Remove ' + esc(d.name) + '">Remove</button></div>';
+      }).join('');
+    }
+    var b = $('#docAnalyzeBtn');
+    b.disabled = docBusy || !state.docs.length;
+    b.textContent = docBusy ? 'Reading…' : 'Analyze documents';
+    renderDocTotals();
+  }
+
+  function renderDocTotals() {
+    var el = $('#docTotals');
+    if (!el) return;
+    var room = null;
+    state.rooms.forEach(function (r) { if (r.docs) room = r; });
+    if (!room) { el.hidden = true; el.innerHTML = ''; return; }
+    var lo = 0, hi = 0, n = 0;
+    room.issues.forEach(function (i) {
+      if (i.include) { lo += Math.min(i.low, i.high); hi += Math.max(i.low, i.high); n++; }
+    });
+    var t = totals();
+    el.hidden = false;
+    el.innerHTML = '<h2>Report findings</h2><p class="range">' + fmt(lo) + ' <span>to</span> ' + fmt(hi) + '</p>' +
+      '<p class="sub">' + plural(n, 'finding') + ' included.' +
+      (room.replaced ? ' ' + room.replaced + ' matched ' + (room.replaced === 1 ? 'a photo' : 'photos') + ' you took, so the report estimate replaced the photo estimate.' : '') + '</p>' +
+      '<p class="sub">Your overall scan and report total is now ' + fmt(t.lo) + ' to ' + fmt(t.hi) + '. Open the rehab calculator to turn it into a full budget.</p>';
+  }
+
+  function restoreSuperseded(roomId) {
+    state.rooms.forEach(function (r) {
+      r.issues.forEach(function (i) {
+        if (i.supersededBy === roomId) { i.include = true; i.note = ''; delete i.supersededBy; }
+      });
+    });
+  }
+
+  function buildDocPrompt(docs, images) {
+    var withText = docs.filter(function (d) { return d.text; });
+    var total = 0;
+    withText.forEach(function (d) { total += d.text.length; });
+    var BUDGET = 190000, trimmed = total > BUDGET;
+    var blocks = withText.map(function (d, i) {
+      var t = d.text;
+      if (trimmed) t = t.slice(0, Math.floor(BUDGET * d.text.length / total));
+      return '=== DOCUMENT ' + (i + 1) + ': ' + d.name + ' ===\n' + t;
+    });
+    var imgNames = [];
+    docs.forEach(function (d) {
+      (d.images || []).forEach(function (b, k) { imgNames.push(d.name + (d.kind === 'pdf' ? ' (page ' + (k + 1) + ')' : '')); });
+    });
+    imgNames = imgNames.slice(0, images.length);
+    var scan = [];
+    state.rooms.forEach(function (r) {
+      if (r.docs) return;
+      r.issues.forEach(function (i) { scan.push({ id: i.id, room: r.label, title: i.title, category: i.category, low: i.low, high: i.high }); });
+    });
+    var buyer = state.mode === 'buyer';
+    var lines = [
+      'You are a veteran San Francisco Bay Area home inspector and rehab estimator. Read the home inspection reports and seller disclosures below' + ($('#address').value.trim() ? ' for the property at ' + $('#address').value.trim() : '') + '.',
+      buyer ? 'Audience: a home buyer. Use plain, friendly language with no trade jargon.' : 'Audience: a real estate investor. Write like a contractor scoping the job.',
+      'Documents start with a header line like === DOCUMENT 1: name === and pages are marked [Page n].',
+      blocks.join('\n\n'),
+      imgNames.length ? 'The attached images are scanned pages, in this order: ' + imgNames.join('; ') + '.' : '',
+      'Items already flagged from the buyer’s own photo walkthrough (JSON): ' + JSON.stringify(scan),
+      'Rules:',
+      '- Extract every finding that matters for repairs, safety, or negotiation: defects, deferred maintenance, water intrusion or moisture, mold, pests, roof, foundation, electrical, plumbing, heating and cooling, unpermitted work, and past problems disclosed by the seller.',
+      '- Skip boilerplate, legal text, and informational items that need no action. List at most 25 findings, most important first.',
+      '- If the document gives a repair cost, use it and set cost_source to "report". Otherwise estimate a realistic Bay Area low and high in US dollars, labor and materials, and set cost_source to "estimate".',
+      '- If a finding is the same problem as an item in the photo walkthrough list, set matches_scan_id to that item’s id. Otherwise null.',
+      '- Do not label anything major unless it affects safety, structure, or water intrusion, or would cost over 5000 dollars to fix.',
+      '- Never invent findings that are not in the documents.',
+      'Respond with JSON only. No markdown fences. Use exactly this shape:',
+      '{"summary":"two sentences on the overall condition and the main concern","top_risks":["short item"],"findings":[{"title":"short name","category":"Flooring|Paint|Drywall|Plumbing|Electrical|Roofing|Windows and doors|HVAC|Cabinets and counters|Fixtures|Exterior|Foundation|Pest and moisture|Other","severity":"minor|moderate|major","document":"document name","page":0,"what_report_says":"one sentence","recommended_fix":"one sentence","cost_low":0,"cost_high":0,"cost_source":"report|estimate","matches_scan_id":null}],"questions_for_seller":["short question"]}'
+    ];
+    return { prompt: lines.filter(Boolean).join('\n'), trimmed: trimmed };
+  }
+
+  function buildDocRoom(d) {
+    d = d && typeof d === 'object' ? d : {};
+    var roomId = uid();
+    var scanIssues = {};
+    state.rooms.forEach(function (r) {
+      if (r.docs) return;
+      r.issues.forEach(function (i) { scanIssues[i.id] = i; });
+    });
+    var replaced = 0;
+    var issues = (Array.isArray(d.findings) ? d.findings : []).slice(0, 30).map(function (f) {
+      var lo = num(f.cost_low), hi = num(f.cost_high);
+      if (hi < lo) { var t = lo; lo = hi; hi = t; }
+      var pg = parseInt(f.page, 10);
+      var fromReport = f.cost_source === 'report';
+      var item = {
+        id: uid(),
+        title: str(f.title) || 'Finding',
+        category: str(f.category) || 'Other',
+        severity: SEV_ORDER[f.severity] != null ? f.severity : 'moderate',
+        see: str(f.what_report_says),
+        fix: str(f.recommended_fix),
+        confidence: fromReport ? 'high' : 'medium',
+        photo: 0,
+        src: (str(f.document) || 'Report') + (pg ? ', page ' + pg : '') + (fromReport ? ', cost from the report' : ', cost is an estimate'),
+        note: '',
+        include: true,
+        low: lo,
+        high: hi
+      };
+      var m = f.matches_scan_id ? scanIssues[f.matches_scan_id] : null;
+      if (m) {
+        m.include = false;
+        m.supersededBy = roomId;
+        m.note = 'Replaced by a report finding (' + item.title + '). Turn this back on to use the photo estimate instead.';
+        item.note = 'Same problem as your photo of “' + m.title + '”. This estimate replaces the photo estimate.';
+        replaced++;
+      }
+      return item;
+    });
+    issues.sort(function (a, b) { return SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || b.high - a.high; });
+    return {
+      id: roomId,
+      docs: true,
+      label: 'Inspection and disclosure reports',
+      sqft: 0,
+      thumbs: [],
+      minis: [],
+      summary: str(d.summary),
+      risks: (Array.isArray(d.top_risks) ? d.top_risks : []).map(str).filter(Boolean).slice(0, 6),
+      condition: 'fair',
+      materials: [],
+      issues: issues,
+      inspect: (Array.isArray(d.questions_for_seller) ? d.questions_for_seller : []).map(str).filter(Boolean).slice(0, 10),
+      replaced: replaced
+    };
+  }
+
+  function analyzeDocs() {
+    if (docBusy) return;
+    if (!sample) { noteTo('#docNotice', 'Analysis runs through Claude. Open this page in the Claude app or on claude.ai.'); return; }
+    var docs = state.docs.slice();
+    if (!docs.length) { noteTo('#docNotice', 'Add a report or paste some text first.'); return; }
+    var images = [];
+    docs.forEach(function (d) { (d.images || []).forEach(function (b) { images.push(b); }); });
+    if (images.length && !imageLimits) { noteTo('#docNotice', 'This view can’t send scanned pages. Paste the text instead, or open the page in the Claude app.'); return; }
+    if (images.length > maxPhotos()) images = images.slice(0, maxPhotos());
+    var hasText = docs.some(function (d) { return d.text && d.text.length > 0; });
+    if (!hasText && !images.length) { noteTo('#docNotice', 'Nothing readable in those files. Try pasting the text.'); return; }
+
+    var built = buildDocPrompt(docs, images);
+    noteTo('#docNotice', '');
+    docBusy = true;
+    setBar('#docBusy', true);
+    renderDocs();
+    runJSON(built.prompt, images).then(function (data) {
+      state.rooms.filter(function (r) { return r.docs; }).forEach(function (r) { restoreSuperseded(r.id); });
+      state.rooms = state.rooms.filter(function (r) { return !r.docs; });
+      var room = buildDocRoom(data);
+      state.rooms.push(room);
+      render();
+      var msg = '';
+      if (!room.issues.length) msg = 'No repair findings came out of these documents. ';
+      if (built.trimmed) msg += 'These documents were long, so I read the first part of each. Findings later in the files may be missing.';
+      noteTo('#docNotice', msg.trim());
+      var el = $('#docTotals');
+      if (el && !el.hidden && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
+    }).catch(function (e) {
+      noteTo('#docNotice', errCopy(e && e.code));
+    }).then(function () {
+      docBusy = false;
+      aiCtl = null;
+      setBar('#docBusy', false);
+      renderDocs();
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-doc-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-doc-act');
+    if (act === 'pick') { $('#docFile').click(); }
+    else if (act === 'addPaste') {
+      var t = $('#docPaste').value.trim();
+      if (!t) { noteTo('#docNotice', 'Paste some text first.'); return; }
+      state.docs.push({ id: uid(), name: 'Pasted text ' + (state.docs.length + 1), kind: 'text', pages: 1, text: t, chars: t.length, images: [], scanned: false });
+      $('#docPaste').value = '';
+      noteTo('#docNotice', '');
+      renderDocs();
+    }
+    else if (act === 'remove') {
+      var id = b.getAttribute('data-id');
+      state.docs = state.docs.filter(function (d) { return d.id !== id; });
+      renderDocs();
+    }
+    else if (act === 'analyze') { analyzeDocs(); }
+    else if (act === 'stop') { if (aiCtl) aiCtl.abort(); }
+  });
+  $('#docFile').addEventListener('change', function (e) {
+    addDocFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  /* ---------- Quick CMA ---------- */
+  var WINDOWS = [
+    { id: 'auto', label: 'Auto: start close and recent, widen as needed' },
+    { id: 'tight', label: '0.25 mile, 90 days', r: 0.25, d: 90 },
+    { id: 'mid', label: '0.5 mile, 180 days', r: 0.5, d: 180 },
+    { id: 'wide', label: '1 mile, 180 days', r: 1, d: 180 },
+    { id: 'max', label: '1 mile, 12 months', r: 1, d: 365 },
+    { id: 'all', label: 'Use all comps' }
+  ];
+  var cma = { address: '', sqft: 0, beds: '', baths: '', win: 'auto', renovated: false, comps: [] };
+  var cmaBusy = false;
+
+  function daysAgo(s) {
+    if (!s) return null;
+    var t = Date.parse(s);
+    if (!isFinite(t)) return null;
+    return Math.floor((Date.now() - t) / 86400000);
+  }
+  function usableComp(c) { return c.include && c.price > 0 && c.sqft > 0; }
+  function compInside(c, r, d) {
+    var ds = daysAgo(c.date);
+    return (!(c.dist > 0) || c.dist <= r) && (ds == null || ds <= d);
+  }
+  function pct(arr, p) {
+    var i = (arr.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i);
+    return arr[lo] + (arr[hi] - arr[lo]) * (i - lo);
+  }
+  function pickComps() {
+    var u = cma.comps.filter(usableComp);
+    if (cma.win === 'all') return { list: u, label: 'all comps' };
+    if (cma.win === 'auto') {
+      var R = [0.25, 0.5, 0.75, 1], D = [90, 180, 270, 365];
+      for (var a = 0; a < D.length; a++) {
+        for (var b = 0; b < R.length; b++) {
+          var l = u.filter(function (c) { return compInside(c, R[b], D[a]); });
+          if (l.length >= 3) return { list: l, label: R[b] + ' mile, ' + D[a] + ' days' };
+        }
+      }
+      return { list: u.filter(function (c) { return compInside(c, 1, 365); }), label: '1 mile, 12 months, fewer than 3 matches' };
+    }
+    var w = WINDOWS.filter(function (x) { return x.id === cma.win; })[0] || WINDOWS[0];
+    return { list: u.filter(function (c) { return compInside(c, w.r, w.d); }), label: w.label };
+  }
+  function computeCma() {
+    var p = pickComps();
+    var out = { label: p.label, window: p.list, used: [], low: 0, high: 0, mid: 0, ppsf: 0, ok: false, needSqft: false };
+    if (!(cma.sqft > 0)) { out.needSqft = true; return out; }
+    var sorted = p.list.slice().sort(function (a, b) {
+      return Math.abs(a.sqft - cma.sqft) - Math.abs(b.sqft - cma.sqft);
+    }).slice(0, 6);
+    out.used = sorted;
+    if (!sorted.length) return out;
+    var ests = sorted.map(function (c) { return c.price / c.sqft * cma.sqft; }).sort(function (a, b) { return a - b; });
+    var pp = sorted.map(function (c) { return c.price / c.sqft; }).sort(function (a, b) { return a - b; });
+    out.low = Math.round(ests.length >= 5 ? pct(ests, 0.25) : ests[0]);
+    out.high = Math.round(ests.length >= 5 ? pct(ests, 0.75) : ests[ests.length - 1]);
+    out.mid = Math.round(pct(ests, 0.5));
+    out.ppsf = Math.round(pct(pp, 0.5));
+    out.ok = true;
+    return out;
+  }
+  function repairRange() {
+    var c = calcTotals();
+    if (c.totHi > 0) return { lo: c.totLo, hi: c.totHi, src: 'rehab calculator' };
+    var t = totals(), k = 1 + state.contingency / 100;
+    if (t.hi > 0) return { lo: Math.round(t.lo * k), hi: Math.round(t.hi * k), src: 'room scans and reports' };
+    return null;
+  }
+  function findComp(id) {
+    for (var i = 0; i < cma.comps.length; i++) if (cma.comps[i].id === id) return cma.comps[i];
+    return null;
+  }
+
+  function updateLookups() {
+    var box = $('#lookups');
+    if (!box) return;
+    var a = ($('#cmaAddress').value || '').trim();
+    if (!a) { box.innerHTML = '<span class="note">Enter an address to get lookup links.</span>'; return; }
+    var slug = encodeURIComponent(a.replace(/[,\s]+/g, '-'));
+    var links = [
+      ['Zillow', 'https://www.zillow.com/homes/' + slug + '_rb/'],
+      ['Redfin', 'https://www.google.com/search?q=' + encodeURIComponent(a + ' site:redfin.com')],
+      ['Homes.com', 'https://www.google.com/search?q=' + encodeURIComponent(a + ' site:homes.com')]
+    ];
+    box.innerHTML = links.map(function (l) {
+      return '<a href="' + l[1] + '" target="_blank" rel="noopener noreferrer">' + l[0] + '</a>';
+    }).join('');
+  }
+
+  function normComp(c) {
+    c = c || {};
+    var d = str(c.sold_date) || str(c.date);
+    var iso = '';
+    if (d) { var t = Date.parse(d); if (isFinite(t)) iso = new Date(t).toISOString().slice(0, 10); }
+    var dist = parseFloat(c.distance_miles != null ? c.distance_miles : c.dist);
+    var beds = parseFloat(c.beds), baths = parseFloat(c.baths);
+    return {
+      id: uid(),
+      addr: str(c.address) || str(c.addr),
+      price: num(c.sold_price != null ? c.sold_price : c.price),
+      date: iso,
+      sqft: num(c.sqft),
+      beds: isFinite(beds) && beds > 0 ? beds : 0,
+      baths: isFinite(baths) && baths > 0 ? baths : 0,
+      dist: isFinite(dist) && dist > 0 ? dist : 0,
+      include: true
+    };
+  }
+
+  function compHTML(c) {
+    var id = c.id;
+    function fld(label, field, type, val, extra) {
+      return '<label class="f">' + label + '<input type="' + type + '" ' + (extra || '') + ' data-cma-field="' + field + '" data-comp="' + id + '" value="' + esc(val) + '"></label>';
+    }
+    return '<article class="comp' + (c.include ? '' : ' off') + '" data-comp-card="' + id + '">' +
+      '<div class="comp-top"><input type="text" aria-label="Comp address" placeholder="Address" data-cma-field="addr" data-comp="' + id + '" value="' + esc(c.addr) + '">' +
+      '<button type="button" class="btn small ghost" data-cma-act="removeComp" data-id="' + id + '" aria-label="Remove comp">Remove</button></div>' +
+      '<div class="grid2">' +
+      fld('Sold price ($)', 'price', 'number', c.price || '', 'inputmode="numeric" min="0"') +
+      fld('Sq ft', 'sqft', 'number', c.sqft || '', 'inputmode="numeric" min="0"') +
+      fld('Sold date', 'date', 'date', c.date || '') +
+      fld('Miles away', 'dist', 'number', c.dist || '', 'inputmode="decimal" min="0" step="0.05"') +
+      fld('Beds', 'beds', 'number', c.beds || '', 'inputmode="decimal" min="0"') +
+      fld('Baths', 'baths', 'number', c.baths || '', 'inputmode="decimal" min="0" step="0.5"') +
+      '</div><p class="meta" id="cf-' + id + '"></p>' +
+      '<label class="inc2"><input type="checkbox" data-cma-field="include" data-comp="' + id + '"' + (c.include ? ' checked' : '') + '><span>Use this comp</span></label></article>';
+  }
+
+  function renderComps() {
+    var box = $('#compList');
+    if (!box) return;
+    if (!cma.comps.length) box.innerHTML = '<p class="note">No comps yet. Paste them, upload screenshots, or add one by hand.</p>';
+    else box.innerHTML = cma.comps.map(compHTML).join('');
+    updateCompFlags();
+  }
+
+  function updateCompFlags(r) {
+    r = r || computeCma();
+    var inWindow = {}, used = {};
+    r.window.forEach(function (c) { inWindow[c.id] = true; });
+    r.used.forEach(function (c) { used[c.id] = true; });
+    cma.comps.forEach(function (c) {
+      var el = document.getElementById('cf-' + c.id);
+      if (!el) return;
+      var bits = [];
+      if (c.price > 0 && c.sqft > 0) bits.push(fmt(Math.round(c.price / c.sqft)) + ' per sq ft');
+      if (cma.sqft > 0 && c.sqft > 0) {
+        var diff = Math.round((c.sqft - cma.sqft) / cma.sqft * 100);
+        bits.push((diff > 0 ? '+' : '') + diff + '% size');
+      }
+      var ds = daysAgo(c.date);
+      if (ds != null) bits.push(ds + ' days ago');
+      if (c.src === 'dm') bits.push('From DealMachine');
+      if (!usableComp(c)) bits.push('Not used');
+      else if (used[c.id]) bits.push('Used in the range');
+      else if (inWindow[c.id]) bits.push('Not among the 6 closest in size');
+      else bits.push('Outside the comp window');
+      el.textContent = bits.join(', ');
+    });
+  }
+
+  function updateCmaResult() {
+    var el = $('#cmaResult');
+    if (!el) return;
+    var r = computeCma();
+    updateCompFlags(r);
+    if (!cma.comps.length) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    if (r.needSqft) {
+      el.innerHTML = '<h2>Value range</h2><p class="sub">Add the property’s square footage above to see a range.</p>';
+      return;
+    }
+    if (!r.ok) {
+      el.innerHTML = '<h2>Value range</h2><p class="sub">None of your comps fit this window. Widen the window, or check each comp’s price and square footage.</p>';
+      return;
+    }
+    var buyer = state.mode === 'buyer';
+    var h = '<h2>Value range</h2><p class="range">' + fmt(r.low) + ' <span>to</span> ' + fmt(r.high) + '</p>';
+    h += '<p class="sub">Middle estimate ' + fmt(r.mid) + ', about ' + fmt(r.ppsf) + ' per sq ft, from ' + plural(r.used.length, 'comp') + ' (' + esc(r.label) + ').</p>';
+    if (r.used.length < 3) h += '<p class="notice">Fewer than three comps, so treat this as a rough guess.</p>';
+    var top3 = r.used.slice(0, 3);
+    if (top3.length) {
+      h += '<p class="sub-h">Top ' + top3.length + ' closest ' + (top3.length === 1 ? 'comp' : 'comps') + ' in size</p><ul class="further">' + top3.map(function (c) {
+        return '<li><strong>' + esc(c.addr || 'Comp') + '</strong>: ' + fmt(c.price) + (c.date ? ', sold ' + esc(shortDate(c.date)) : '') +
+          ', ' + c.sqft.toLocaleString('en-US') + ' sq ft' + (c.dist > 0 ? ', ' + c.dist + ' mi away' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    var rep = repairRange();
+    if (cma.renovated && rep) {
+      h += '<table><thead><tr><th>If the comps are renovated</th><th class="amt">Low</th><th class="amt">High</th></tr></thead><tbody>' +
+        calcRow('Value after repairs', r.low, r.high) +
+        calcRow('Repair budget (' + rep.src + ')', rep.lo, rep.hi) +
+        calcRow('Estimated as-is value', Math.max(0, r.low - rep.hi), Math.max(0, r.high - rep.lo)) +
+        '</tbody></table>';
+      if (!buyer) {
+        var mao = Math.max(0, Math.round(r.mid * 0.7 - (rep.lo + rep.hi) / 2));
+        h += '<p class="budget">70% rule max offer: ' + fmt(mao) + '</p><p class="note">Rule of thumb: 70% of the after-repair value, minus repairs. Your numbers and your market decide the real offer.</p>';
+      }
+    } else if (cma.renovated) {
+      h += '<p class="note">Scan rooms or use the rehab calculator to get a repair budget, and the as-is value will show up here.</p>';
+    }
+    h += '<p class="note">Comps are not adjusted for condition, lot, view, or upgrades. This is a quick estimate, not an appraisal or a full CMA.</p>';
+    el.innerHTML = h;
+  }
+
+  function enterCma() {
+    var a = $('#address').value.trim();
+    if (!$('#cmaAddress').value && a) { $('#cmaAddress').value = a; cma.address = a; }
+    if (!cma.sqft && calc.sqft) { cma.sqft = calc.sqft; $('#cmaSqft').value = calc.sqft; }
+    updateLookups();
+    updateCmaResult();
+  }
+
+  var COMP_SCHEMA = 'Respond with JSON only, no markdown: {"comps":[{"address":"","sold_price":0,"sold_date":"YYYY-MM-DD","sqft":0,"beds":0,"baths":0,"distance_miles":null}]}';
+
+  function runComps(prompt, images) {
+    if (cmaBusy) return;
+    cmaBusy = true;
+    setBar('#cmaBusy', true);
+    noteTo('#cmaNotice', '');
+    runJSON(prompt, images).then(function (data) {
+      var list = (data && Array.isArray(data.comps)) ? data.comps : [];
+      var added = list.map(normComp).filter(function (c) { return c.price > 0 || c.addr; });
+      added.forEach(function (c) { cma.comps.push(c); });
+      if (added.length) {
+        $('#cmaPaste').value = '';
+        noteTo('#cmaNotice', 'Added ' + plural(added.length, 'comp') + '. Check the numbers below before you rely on them.');
+      } else {
+        noteTo('#cmaNotice', 'No sold comps found in that. Try including the sold price, date, and square footage.');
+      }
+      renderComps();
+      updateCmaResult();
+    }).catch(function (e) {
+      noteTo('#cmaNotice', errCopy(e && e.code));
+    }).then(function () {
+      cmaBusy = false;
+      aiCtl = null;
+      setBar('#cmaBusy', false);
+    });
+  }
+
+  function parseCompsText() {
+    var text = $('#cmaPaste').value.trim();
+    if (!text) { noteTo('#cmaNotice', 'Paste some comps first.'); return; }
+    if (!sample) { noteTo('#cmaNotice', 'Reading comps runs through Claude. Open this page in the Claude app or on claude.ai.'); return; }
+    runComps([
+      'Extract sold comparable properties from the text below.',
+      'Include only homes that sold. Use null or 0 for any field that is not in the text. Convert dates to YYYY-MM-DD. Do not invent values.',
+      COMP_SCHEMA,
+      '',
+      'TEXT:',
+      text
+    ].join('\n'), null);
+  }
+
+  function parseCompsShots(list) {
+    var files = Array.prototype.slice.call(list || []).slice(0, maxPhotos());
+    if (!files.length) return;
+    if (!sample || !imageLimits) { noteTo('#cmaNotice', 'This view can’t send screenshots to Claude. Paste the comps as text instead.'); return; }
+    noteTo('#cmaNotice', 'Preparing screenshots…');
+    Promise.all(files.map(processImage)).then(function (ps) {
+      runComps([
+        'The attached screenshots show sold comparable properties from a listing site or MLS.',
+        'Extract every home that sold. Use null or 0 for any field you cannot see. Convert dates to YYYY-MM-DD. Do not invent values.',
+        COMP_SCHEMA
+      ].join('\n'), ps.map(function (p) { return p.blob; }));
+    }).catch(function () { noteTo('#cmaNotice', 'One screenshot couldn’t be read. Try a JPG or PNG.'); });
+  }
+
+  function initCma() {
+    $('#cmaWin').innerHTML = WINDOWS.map(function (w) { return '<option value="' + w.id + '">' + w.label + '</option>'; }).join('');
+    renderComps();
+    updateLookups();
+    updateCmaResult();
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cma-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-cma-act');
+    if (act === 'parsePaste') parseCompsText();
+    else if (act === 'pickShots') $('#cmaFile').click();
+    else if (act === 'addBlank') { cma.comps.push(normComp({})); renderComps(); updateCmaResult(); }
+    else if (act === 'removeComp') {
+      var id = b.getAttribute('data-id');
+      cma.comps = cma.comps.filter(function (c) { return c.id !== id; });
+      renderComps();
+      updateCmaResult();
+    }
+    else if (act === 'stop') { if (aiCtl) aiCtl.abort(); }
+  });
+  $('#cmaFile').addEventListener('change', function (e) {
+    parseCompsShots(e.target.files);
+    e.target.value = '';
+  });
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.id === 'cmaAddress') { cma.address = t.value; $('#address').value = t.value; updateLookups(); return; }
+    if (t.id === 'address') { $('#cmaAddress').value = t.value; cma.address = t.value; updateLookups(); return; }
+    if (t.id === 'cmaSqft') { cma.sqft = num(t.value); updateCmaResult(); return; }
+    if (t.id === 'cmaBeds') { cma.beds = t.value; return; }
+    if (t.id === 'cmaBaths') { cma.baths = t.value; return; }
+    var f = t.getAttribute && t.getAttribute('data-cma-field');
+    var cid = t.getAttribute && t.getAttribute('data-comp');
+    if (!f || !cid) return;
+    var c = findComp(cid);
+    if (!c) return;
+    if (f === 'addr') c.addr = t.value;
+    else if (f === 'price' || f === 'sqft') c[f] = num(t.value);
+    else if (f === 'date') c.date = t.value;
+    else if (f === 'dist' || f === 'beds' || f === 'baths') {
+      var v = parseFloat(t.value);
+      c[f] = isFinite(v) && v > 0 ? v : 0;
+    }
+    updateCmaResult();
+  });
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'cmaWin') { cma.win = t.value; updateCmaResult(); return; }
+    if (t.id === 'cmaReno') { cma.renovated = t.checked; updateCmaResult(); return; }
+    var f = t.getAttribute && t.getAttribute('data-cma-field');
+    var cid = t.getAttribute && t.getAttribute('data-comp');
+    if (f === 'include' && cid) {
+      var c = findComp(cid);
+      if (!c) return;
+      c.include = t.checked;
+      var card = t.closest('.comp');
+      if (card) card.classList.toggle('off', !c.include);
+      updateCmaResult();
+    }
+  });
+
+  /* ---------- Saved reports ---------- */
+  var coll = null;
+  var LS_KEY = 'btp-analyzer-reports';
+  var repCache = {};
+  var pendingDelete = '';
+  var newArmed = false;
+  state.reportId = '';
+  state.reportName = '';
+
+  function lsRead() {
+    try {
+      var a = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function lsWrite(a) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(a)); return true; } catch (e) { return false; }
+  }
+
+  function initStore() {
+    var get = function (n) {
+      try {
+        return (window.claude && window.claude.use) ? Promise.resolve(window.claude.use(n)).catch(function () { return null; }) : Promise.resolve(null);
+      } catch (e) { return Promise.resolve(null); }
+    };
+    Promise.all([get('db'), get('user')]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user || !user.id) return;
+      return Promise.resolve(user.id()).then(function (id) { if (id) coll = db.collection('data/users/' + id); });
+    }).catch(function () { coll = null; }).then(function () {
+      if (!$('#panel-saved').hidden) refreshList();
+    });
+  }
+
+  function storeList() {
+    var local = lsRead();
+    if (!coll) return Promise.resolve(local);
+    return coll.get().then(function (snap) {
+      var remote = [], seen = {};
+      snap.docs.forEach(function (d) {
+        var x = d.data();
+        if (x && x.kind === 'report') { remote.push(JSON.parse(JSON.stringify(x))); seen[x.id] = true; }
+      });
+      return remote.concat(local.filter(function (x) { return !seen[x.id]; }));
+    }).catch(function () { return local; });
+  }
+  function storeSave(rep) {
+    var saveLocal = function () {
+      var a = lsRead().filter(function (x) { return x.id !== rep.id; });
+      a.push(rep);
+      return lsWrite(a) ? 'device' : false;
+    };
+    if (!coll) return Promise.resolve(saveLocal());
+    return coll.doc('rpt_' + rep.id).set(rep).then(function () { return 'account'; }).catch(function () { return saveLocal(); });
+  }
+  function storeDelete(id) {
+    lsWrite(lsRead().filter(function (x) { return x.id !== id; }));
+    if (!coll) return Promise.resolve();
+    return coll.doc('rpt_' + id).delete().catch(function () { /* ignore */ });
+  }
+
+  function snapshotReport() {
+    if (!state.reportId) state.reportId = uid();
+    var t = totals(), c = calcTotals();
+    var addr = $('#address').value.trim();
+    var rep = {
+      kind: 'report',
+      v: 1,
+      id: state.reportId,
+      name: $('#repName').value.trim() || addr || 'Untitled property',
+      address: addr,
+      savedAt: Date.now(),
+      mode: state.mode,
+      contingency: state.contingency,
+      rooms: state.rooms.map(function (r) {
+        return { id: r.id, label: r.label, sqft: r.sqft, thumbs: (r.minis || []).slice(0, 6), summary: r.summary, risks: r.risks || [], condition: r.condition,
+          materials: r.materials, issues: r.issues, inspect: r.inspect, docs: !!r.docs, replaced: r.replaced || 0 };
+      }),
+      calc: { sqft: calc.sqft, baths: calc.baths, scan: calc.scan, levels: calc.levels, ov: calc.ov },
+      cma: { address: cma.address, sqft: cma.sqft, beds: cma.beds, baths: cma.baths, win: cma.win, renovated: cma.renovated, comps: cma.comps, dm: cma.dm || null },
+      docs: state.docs.map(function (d) { return { name: d.name, kind: d.kind }; }),
+      summary: { scanLo: t.lo, scanHi: t.hi, budgetLo: c.totLo, budgetHi: c.totHi, rooms: state.rooms.filter(function (r) { return !r.docs; }).length }
+    };
+    if (JSON.stringify(rep).length > 220000) rep.rooms.forEach(function (r) { r.thumbs = []; });
+    return rep;
+  }
+
+  function resetEverything() {
+    state.rooms = [];
+    state.pending = [];
+    state.docs = [];
+    state.reportId = '';
+    state.reportName = '';
+    calc.sqft = 0; calc.baths = 2; calc.scan = false; calc.ov = {};
+    CATS.forEach(function (c) { calc.levels[c.id] = 'skip'; });
+    cma.address = ''; cma.sqft = 0; cma.beds = ''; cma.baths = ''; cma.win = 'auto'; cma.renovated = false; cma.comps = []; cma.dm = null;
+    noteTo('#dmNotice', '');
+    $('#dmWiderRow').hidden = true;
+    $('#address').value = '';
+    $('#calcSqft').value = '';
+    $('#calcBaths').value = '2';
+    $('#cmaAddress').value = '';
+    $('#cmaBeds').value = '';
+    $('#cmaBaths').value = '';
+    $('#cmaSqft').value = '';
+    $('#cmaWin').value = 'auto';
+    $('#cmaReno').checked = false;
+    $('#repName').value = '';
+    setNotice('');
+    renderComps();
+    updateLookups();
+    render();
+  }
+
+  function loadReport(rep) {
+    resetEverything();
+    state.reportId = rep.id;
+    state.reportName = rep.name || '';
+    $('#address').value = rep.address || '';
+    state.mode = rep.mode === 'investor' ? 'investor' : 'buyer';
+    state.contingency = typeof rep.contingency === 'number' ? rep.contingency : 15;
+    state.rooms = (rep.rooms || []).map(function (r) {
+      r.thumbs = r.thumbs || [];
+      r.minis = r.thumbs.slice();
+      r.materials = r.materials || [];
+      r.issues = r.issues || [];
+      r.inspect = r.inspect || [];
+      return r;
+    });
+    var c = rep.calc || {};
+    calc.sqft = c.sqft || 0;
+    calc.baths = typeof c.baths === 'number' ? c.baths : 2;
+    calc.scan = !!c.scan;
+    calc.ov = c.ov || {};
+    CATS.forEach(function (cat) { calc.levels[cat.id] = (c.levels && c.levels[cat.id]) || 'skip'; });
+    $('#calcSqft').value = calc.sqft || '';
+    $('#calcBaths').value = calc.baths;
+    var m = rep.cma || {};
+    cma.address = m.address || rep.address || '';
+    cma.sqft = m.sqft || 0;
+    cma.beds = m.beds || '';
+    cma.baths = m.baths || '';
+    cma.win = m.win || 'auto';
+    cma.renovated = !!m.renovated;
+    cma.comps = m.comps || [];
+    cma.dm = m.dm || null;
+    $('#cmaAddress').value = cma.address;
+    $('#cmaSqft').value = cma.sqft || '';
+    $('#cmaBeds').value = cma.beds;
+    $('#cmaBaths').value = cma.baths;
+    $('#cmaWin').value = cma.win;
+    $('#cmaReno').checked = cma.renovated;
+    $('#repName').value = rep.name || '';
+    renderComps();
+    updateLookups();
+    render();
+    showTab('scan');
+    setNotice('Opened “' + (rep.name || 'Untitled property') + '”.');
+  }
+
+  function refreshList() {
+    var box = $('#repList');
+    box.innerHTML = '<p class="note">Loading…</p>';
+    storeList().then(function (list) {
+      repCache = {};
+      list.forEach(function (r) { repCache[r.id] = r; });
+      list.sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+      if (!list.length) { box.innerHTML = '<p class="note">No saved reports yet.</p>'; return; }
+      box.innerHTML = list.map(function (r) {
+        var s = r.summary || {};
+        var when = r.savedAt ? new Date(r.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        var money = s.budgetHi ? 'Budget ' + fmt(s.budgetLo) + ' to ' + fmt(s.budgetHi) : (s.scanHi ? 'Repairs ' + fmt(s.scanLo) + ' to ' + fmt(s.scanHi) : 'No estimate yet');
+        return '<article class="rep"><h3>' + esc(r.name || 'Untitled property') + '</h3>' +
+          '<p class="meta">' + esc([r.address, when ? 'saved ' + when : ''].filter(Boolean).join(', ')) + '</p>' +
+          '<p>' + esc(money) + (s.rooms ? ', ' + esc(plural(s.rooms, 'room')) : '') + '</p>' +
+          '<div class="actions"><button type="button" class="btn small" data-rep-act="open" data-id="' + esc(r.id) + '">Open</button>' +
+          '<button type="button" class="btn small ghost" data-rep-act="delete" data-id="' + esc(r.id) + '">' + (pendingDelete === r.id ? 'Tap again to delete' : 'Delete') + '</button></div></article>';
+      }).join('');
+    });
+  }
+
+  function enterSaved() {
+    if (!$('#repName').value) $('#repName').value = state.reportName || $('#address').value.trim();
+    refreshList();
+  }
+
+  function saveReport() {
+    var hasStuff = state.rooms.length || calc.sqft || cma.comps.length;
+    if (!hasStuff) { noteTo('#repNotice', 'Nothing to save yet. Scan a room, use the calculator, or add comps first.'); return; }
+    var rep = snapshotReport();
+    state.reportName = rep.name;
+    $('#repName').value = rep.name;
+    storeSave(rep).then(function (where) {
+      if (!where) noteTo('#repNotice', 'Couldn’t save. Storage is full or unavailable in this view.');
+      else noteTo('#repNotice', where === 'account' ? 'Saved. You can reopen it from this tab anytime.' : 'Saved on this device only, because account saving isn’t available in this view.');
+      refreshList();
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rep-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-rep-act');
+    if (act !== 'new') newArmed = false;
+    if (act !== 'delete') pendingDelete = '';
+    if (act === 'save') { saveReport(); }
+    else if (act === 'new') {
+      var anything = state.rooms.length || calc.sqft || cma.comps.length || state.docs.length;
+      if (anything && !newArmed) {
+        newArmed = true;
+        noteTo('#repNotice', 'This clears everything on screen. Save first if you want to keep it, then tap Start a new report again.');
+        return;
+      }
+      newArmed = false;
+      resetEverything();
+      $('#repName').value = '';
+      noteTo('#repNotice', 'Started a new report.');
+      refreshList();
+    }
+    else if (act === 'open') {
+      var rep = repCache[b.getAttribute('data-id')];
+      if (rep) loadReport(JSON.parse(JSON.stringify(rep)));
+    }
+    else if (act === 'delete') {
+      var id = b.getAttribute('data-id');
+      if (pendingDelete !== id) { pendingDelete = id; refreshList(); return; }
+      pendingDelete = '';
+      storeDelete(id).then(function () {
+        if (state.reportId === id) { state.reportId = ''; }
+        noteTo('#repNotice', 'Deleted.');
+        refreshList();
+      });
+    }
+  });
+
+  /* ---------- Address-only comps through the DealMachine connector ---------- */
+  var DM = 'DealMachine';
+  var DM_ENRICH = 'dealmachine_enrich_address';
+  var DM_COMPS = 'dealmachine_comps';
+  var mcpNs = null;
+  var dmBusy = false;
+  cma.dm = null;
+
+  function shortDate(s) {
+    var t = Date.parse(s + 'T12:00:00');
+    return isFinite(t) ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : s;
+  }
+
+  function renderDmBox() {
+    var b = $('#dmBtn'), h = $('#dmHint');
+    if (!b || !h) return;
+    if (!mcpNs) {
+      b.disabled = true;
+      h.textContent = 'Pulling comps needs the DealMachine connector. Open this page in the Claude app or on claude.ai with DealMachine connected. You can still paste comps below.';
+    } else {
+      b.disabled = dmBusy;
+      h.textContent = 'Pulls the closest sold comps from your DealMachine account. Include the ZIP code. Uses about 1 DealMachine credit per new address.';
+    }
+  }
+
+  function initMcp() {
+    var p;
+    try {
+      p = (window.claude && window.claude.use) ? Promise.resolve(window.claude.use('mcp')) : Promise.resolve(null);
+    } catch (e) { p = Promise.resolve(null); }
+    p.then(function (m) { mcpNs = m || null; }).catch(function () { mcpNs = null; }).then(renderDmBox);
+  }
+
+  function dmPayload(res) {
+    var p = res && res.payload;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
+    return p || null;
+  }
+
+  function dmErr(e) {
+    var code = e && e.code;
+    switch (code) {
+      case 'cancelled': return '';
+      case 'nomatch': return 'DealMachine couldn’t match that address. Check the street, city, and ZIP code.';
+      case 'nosubject': return 'DealMachine found the property but returned no comps for it. Try the wider search.';
+      case 'needs_reauth': return 'Reconnect DealMachine in Settings, then Connectors, and try again.';
+      case 'server_not_connected':
+      case 'server_not_found': return 'Add DealMachine in Settings, then Connectors, to pull comps. You can still paste comps below.';
+      case 'approval_required':
+      case 'consent_required':
+      case 'not_granted': return 'Pulling comps needs your OK to use DealMachine. Tap the button again to be asked.';
+      case 'blocked_by_policy': return 'Your organization has blocked this connector for pages like this one.';
+      case 'tool_error': return 'DealMachine reported a problem: ' + String((e && e.message) || '').slice(0, 160);
+      case 'not_configured': return 'Comps aren’t set up on the server yet. You can still paste comps below.';
+      case 'session_expired': return 'Your session expired. Sign in again, then retry.';
+      case 'rate_limited':
+      case 'server_unavailable':
+      case 'upstream_error': return 'DealMachine didn’t respond. Wait a moment and try again.';
+      default: return 'Couldn’t pull comps right now. Try again, or paste comps below.';
+    }
+  }
+
+  function dmMatch(addr) {
+    if (cma.dm && cma.dm.addr === addr && cma.dm.id) return Promise.resolve(cma.dm);
+    return mcpNs.callTool(DM, DM_ENRICH, { full_address: addr, contact_audience: 'none' }).then(function (res) {
+      var p = dmPayload(res);
+      var row = p && p.data && p.data[0];
+      if (!row || !row.matched) { throw { code: 'nomatch', message: row && row.match_failure && row.match_failure.reason }; }
+      cma.dm = {
+        addr: addr, id: row.dm_property_id, lat: row.latitude, lng: row.longitude,
+        name: row.address || row.full_address, sqft: row.living_area_sqft || 0, beds: row.num_bedrooms || 0,
+        baths: row.num_bathrooms || 0, year: row.year_built || 0, est: row.estimated_value || 0
+      };
+      return cma.dm;
+    });
+  }
+
+  function dmToComp(c) {
+    var beds = Number(c.bedrooms), baths = Number(c.bathrooms), dist = Number(c.distance);
+    return {
+      id: uid(),
+      addr: [c.display_line_1, c.display_line_2].filter(Boolean).join(', ') || str(c.address),
+      price: num(c.sale_price),
+      date: c.sale_date ? String(c.sale_date).slice(0, 10) : '',
+      sqft: num(c.sqft),
+      beds: isFinite(beds) && beds > 0 ? beds : 0,
+      baths: isFinite(baths) && baths > 0 ? baths : 0,
+      dist: isFinite(dist) && dist > 0 ? dist : 0,
+      include: true,
+      src: 'dm'
+    };
+  }
+
+  function pullComps(radius, timeframe, wider) {
+    if (dmBusy) return;
+    var addr = ($('#cmaAddress').value || '').trim();
+    if (!addr) { noteTo('#dmNotice', 'Enter the property address first.'); return; }
+    if (!/\b\d{5}\b/.test(addr)) { noteTo('#dmNotice', 'Add the ZIP code to the address, like 123 Main St, San Jose, CA 95125.'); return; }
+    if (!mcpNs) { renderDmBox(); return; }
+    dmBusy = true;
+    setBar('#dmBusy', true);
+    noteTo('#dmNotice', '');
+    $('#dmWiderRow').hidden = true;
+    renderDmBox();
+    var subj;
+    dmMatch(addr).then(function (s) {
+      subj = s;
+      return mcpNs.callTool(DM, DM_COMPS, {
+        property_ids: [s.id],
+        location: { type: 'radius', latitude: s.lat, longitude: s.lng, radius_miles: radius },
+        criteria: { include_active_listings: false, include_pending: false, limit: 25, sort_by: 'match', sqft_tolerance_percent: 30, timeframe: timeframe }
+      });
+    }).then(function (res) {
+      var p = dmPayload(res);
+      var row = p && p.data && p.data[0];
+      if (!row || !row.found) throw { code: 'nosubject' };
+      var found = (row.comps || []).map(dmToComp).filter(function (c) { return c.price > 0 && c.sqft > 0; });
+      cma.comps = cma.comps.filter(function (c) { return c.src !== 'dm'; }).concat(found);
+      if (!cma.sqft && subj.sqft) { cma.sqft = subj.sqft; $('#cmaSqft').value = subj.sqft; }
+      if (!cma.beds && subj.beds) { cma.beds = subj.beds; $('#cmaBeds').value = subj.beds; }
+      if (!cma.baths && subj.baths) { cma.baths = subj.baths; $('#cmaBaths').value = subj.baths; }
+      cma.win = wider ? 'all' : 'auto';
+      $('#cmaWin').value = cma.win;
+      renderComps();
+      updateCmaResult();
+      var r = computeCma();
+      var fit = r.window.length;
+      var msg = 'Matched ' + subj.name + ' (' + [subj.beds ? subj.beds + ' bd' : '', subj.baths ? subj.baths + ' ba' : '', subj.sqft ? subj.sqft.toLocaleString('en-US') + ' sq ft' : '', subj.year ? 'built ' + subj.year : ''].filter(Boolean).join(', ') + '). ';
+      msg += found.length ? 'Found ' + plural(found.length, 'sold comp') + ' within ' + radius + ' ' + (radius === 1 ? 'mile' : 'miles') + (timeframe === 'all' ? '.' : ' in the last ' + (timeframe === '3months' ? '3 months' : timeframe === '6months' ? '6 months' : '12 months') + '.') : 'No sold comps turned up.';
+      if (subj.est) msg += ' For reference, DealMachine’s automated estimate for the property is ' + fmt(subj.est) + '.';
+      noteTo('#dmNotice', msg);
+      $('#dmWiderRow').hidden = !(!wider && fit < 3);
+      if (!wider && fit < 3) noteTo('#dmNotice', msg + ' Only ' + fit + ' fit your window, so try the wider search.');
+    }).catch(function (e) {
+      noteTo('#dmNotice', dmErr(e));
+    }).then(function () {
+      dmBusy = false;
+      setBar('#dmBusy', false);
+      renderDmBox();
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cma-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-cma-act');
+    if (act === 'dmComps') pullComps(1, '12months', false);
+    else if (act === 'dmWider') pullComps(2, 'all', true);
+  });
+
+  /* ---------- Start ---------- */
+  try {
+    if (localStorage.getItem('btp-analyzer-accepted') !== '1') $('#disclaimer').hidden = false;
+  } catch (err) {
+    $('#disclaimer').hidden = false;
+  }
+  initCma();
+  render();
+  initAI();
+  initStore();
+  initMcp();
+})();
+</script>
+</body>
+</html>
